@@ -8,3 +8,11 @@ opencode.json
 skills-lock.json
 AGENTS.md
 .agents/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import type { NewsArticle } from "@/lib/types/news";
@@ -26,30 +26,42 @@ const CATEGORIES = [
   "economy",
 ];
 
+type Tab = "all" | "yahoo" | "scraped";
+
 export default function NewsPage() {
-  const [articles, setArticles] = useState<NewsArticle[]>([]);
-  const [filtered, setFiltered] = useState<NewsArticle[]>([]);
+  const [yahooArticles, setYahooArticles] = useState<NewsArticle[]>([]);
+  const [scrapedArticles, setScrapedArticles] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState("All");
   const [search, setSearch] = useState("");
+  const [tab, setTab] = useState<Tab>("all");
 
   useEffect(() => {
-    fetch("/api/news")
+    const fetchYahoo = fetch("/api/news")
       .then((r) => r.json())
       .then((data) => {
-        if (Array.isArray(data)) {
-          setArticles(data);
-          setFiltered(data);
-        }
-        setLoading(false);
+        if (Array.isArray(data)) setYahooArticles(data);
       })
-      .catch(() => setLoading(false));
+      .catch(() => {});
+
+    const fetchScraped = fetch("/api/news/scraped")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) setScrapedArticles(data);
+      })
+      .catch(() => {});
+
+    Promise.allSettled([fetchYahoo, fetchScraped]).finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => {
-    let result = articles;
+  const articles = useMemo(() => {
+    let pool: NewsArticle[];
+    if (tab === "yahoo") pool = yahooArticles;
+    else if (tab === "scraped") pool = scrapedArticles;
+    else pool = [...yahooArticles, ...scrapedArticles];
+
     if (category !== "All") {
-      result = result.filter(
+      pool = pool.filter(
         (a) =>
           a.title.toLowerCase().includes(category) ||
           a.relatedTickers.some((t) =>
@@ -59,15 +71,21 @@ export default function NewsPage() {
     }
     if (search.trim()) {
       const q = search.toLowerCase();
-      result = result.filter(
+      pool = pool.filter(
         (a) =>
           a.title.toLowerCase().includes(q) ||
           a.publisher.toLowerCase().includes(q) ||
           a.relatedTickers.some((t) => t.toLowerCase().includes(q)),
       );
     }
-    setFiltered(result);
-  }, [category, search, articles]);
+    return pool.sort(
+      (a, b) =>
+        new Date(b.providerPublishTime).getTime() -
+        new Date(a.providerPublishTime).getTime(),
+    );
+  }, [tab, category, search, yahooArticles, scrapedArticles]);
+
+  const isScraped = (uuid: string) => uuid.startsWith("http");
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
@@ -103,6 +121,26 @@ export default function NewsPage() {
         />
       </div>
 
+      <div className="mb-6 flex gap-2 border-b border-border">
+        {([
+          ["all", `All (${yahooArticles.length + scrapedArticles.length})`],
+          ["yahoo", `Yahoo Finance (${yahooArticles.length})`],
+          ["scraped", `Scraped (${scrapedArticles.length})`],
+        ] as [Tab, string][]).map(([key, label]) => (
+          <button
+            key={key}
+            onClick={() => setTab(key)}
+            className={`px-3 py-2 text-xs font-medium transition-colors ${
+              tab === key
+                ? "border-b-2 border-accent text-accent"
+                : "text-text-secondary hover:text-text-primary"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       {loading ? (
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
@@ -114,60 +152,72 @@ export default function NewsPage() {
             </div>
           ))}
         </div>
-      ) : filtered.length === 0 ? (
+      ) : articles.length === 0 ? (
         <p className="py-12 text-center text-sm text-text-secondary">No articles found.</p>
       ) : (
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((article) => (
-            <Link
-              key={article.uuid}
-              href={`/news/${article.uuid}`}
-              className="group flex flex-col rounded-lg border border-border bg-bg-card transition-colors hover:border-accent/30 hover:bg-bg-hover"
-            >
-              <div className="relative h-40 w-full overflow-hidden rounded-t-lg bg-bg-hover">
-                {article.thumbnail ? (
-                  <Image
-                    src={article.thumbnail.url}
-                    alt={article.title}
-                    fill
-                    className="object-cover transition-transform duration-300 group-hover:scale-105"
-                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                  />
-                ) : (
-                  <div className="flex h-full items-center justify-center">
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-text-secondary">
-                      <path d="M4 22h16a2 2 0 002-2V4a2 2 0 00-2-2H8a2 2 0 00-2 2v16a2 2 0 01-4 0V6" />
-                      <path d="M10 6h6" />
-                      <path d="M10 10h6" />
-                      <path d="M10 14h4" />
-                    </svg>
-                  </div>
-                )}
-              </div>
-              <div className="flex flex-1 flex-col p-4">
-                <div className="mb-2 flex items-center gap-2 text-xs text-text-secondary">
-                  <span>{article.publisher}</span>
-                  <span>·</span>
-                  <span>{timeAgo(article.providerPublishTime)}</span>
+          {articles.map((article) => {
+            const scraped = isScraped(article.uuid);
+            const Wrapper = scraped ? "a" : Link;
+            const wrapperProps = scraped
+              ? { href: article.link, target: "_blank", rel: "noopener noreferrer" }
+              : { href: `/news/${article.uuid}` };
+            return (
+              <Wrapper
+                key={article.uuid}
+                {...wrapperProps}
+                className="group flex flex-col rounded-lg border border-border bg-bg-card transition-colors hover:border-accent/30 hover:bg-bg-hover"
+              >
+                <div className="relative h-40 w-full overflow-hidden rounded-t-lg bg-bg-hover">
+                  {article.thumbnail ? (
+                    <Image
+                      src={article.thumbnail.url}
+                      alt={article.title}
+                      fill
+                      className="object-cover transition-transform duration-300 group-hover:scale-105"
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center">
+                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-text-secondary">
+                        <path d="M4 22h16a2 2 0 002-2V4a2 2 0 00-2-2H8a2 2 0 00-2 2v16a2 2 0 01-4 0V6" />
+                        <path d="M10 6h6" />
+                        <path d="M10 10h6" />
+                        <path d="M10 14h4" />
+                      </svg>
+                    </div>
+                  )}
                 </div>
-                <h2 className="mb-2 line-clamp-2 text-sm font-medium leading-snug text-text-primary transition-colors group-hover:text-accent">
-                  {article.title}
-                </h2>
-                {article.relatedTickers.length > 0 && (
-                  <div className="mt-auto flex flex-wrap gap-1">
-                    {article.relatedTickers.slice(0, 4).map((ticker) => (
-                      <span
-                        key={ticker}
-                        className="rounded bg-bg-surface px-1.5 py-0.5 text-[10px] font-medium text-text-secondary font-mono"
-                      >
-                        {ticker}
+                <div className="flex flex-1 flex-col p-4">
+                  <div className="mb-2 flex items-center gap-2 text-xs text-text-secondary">
+                    <span>{article.publisher}</span>
+                    <span>·</span>
+                    <span>{timeAgo(article.providerPublishTime)}</span>
+                    {scraped && (
+                      <span className="ml-auto rounded bg-bg-surface px-1.5 py-0.5 text-[9px] font-mono font-medium uppercase tracking-wider text-text-secondary">
+                        Scraped
                       </span>
-                    ))}
+                    )}
                   </div>
-                )}
-              </div>
-            </Link>
-          ))}
+                  <h2 className="mb-2 line-clamp-2 text-sm font-medium leading-snug text-text-primary transition-colors group-hover:text-accent">
+                    {article.title}
+                  </h2>
+                  {article.relatedTickers.length > 0 && (
+                    <div className="mt-auto flex flex-wrap gap-1">
+                      {article.relatedTickers.slice(0, 4).map((ticker) => (
+                        <span
+                          key={ticker}
+                          className="rounded bg-bg-surface px-1.5 py-0.5 text-[10px] font-medium text-text-secondary font-mono"
+                        >
+                          {ticker}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </Wrapper>
+            );
+          })}
         </div>
       )}
     </div>
