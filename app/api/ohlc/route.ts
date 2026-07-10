@@ -1,0 +1,58 @@
+import { NextResponse } from "next/server";
+import { fetchOhlc } from "@/lib/api/yahoo";
+
+const YAHOO_SYMBOLS: Record<string, string> = {
+  BTC: "BTC-USD",
+  ETH: "ETH-USD",
+  SOL: "SOL-USD",
+  XRP: "XRP-USD",
+  ADA: "ADA-USD",
+  DOGE: "DOGE-USD",
+  DOT: "DOT-USD",
+  MATIC: "POL-USD",
+  AVAX: "AVAX-USD",
+  LINK: "LINK-USD",
+  AAPL: "AAPL",
+  MSFT: "MSFT",
+  GOOGL: "GOOGL",
+  AMZN: "AMZN",
+  NVDA: "NVDA",
+  META: "META",
+  TSLA: "TSLA",
+  JPM: "JPM",
+  V: "V",
+  IBM: "IBM",
+  "EUR/USD": "EURUSD=X",
+  "GBP/USD": "GBPUSD=X",
+  "USD/JPY": "USDJPY=X",
+  GC: "GC=F",
+  CL: "CL=F",
+  SI: "SI=F",
+};
+
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const symbol = searchParams.get("symbol")?.toUpperCase() || "BTC";
+  const type = searchParams.get("type") || "crypto";
+  const days = searchParams.get("days") || "1";
+
+  const forexPairs: Record<string, string> = {
+    "EUR/USD": "EURUSD=X",
+    "GBP/USD": "GBPUSD=X",
+    "USD/JPY": "USDJPY=X",
+    "USD/CHF": "USDCHF=X",
+    "AUD/USD": "AUDUSD=X",
+    "USD/CAD": "USDCAD=X",
+    "NZD/USD": "NZDUSD=X",
+    "EUR/GBP": "EURGBP=X",
+  };
+
+  const yahooSymbol = YAHOO_SYMBOLS[symbol] || forexPairs[symbol] || symbol + "=X";
+
+  try {
+    const bars = await fetchOhlc(yahooSymbol, type, days);
+    return NextResponse.json(bars);
+  } catch {
+    return NextResponse.json({ error: "Failed to load OHLC data" }, { status: 500 });
+  }
+}

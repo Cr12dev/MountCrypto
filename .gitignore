@@ -1,0 +1,10 @@
+node_modules/
+.next/
+.env
+.env.local
+.env*.local
+
+opencode.json
+skills-lock.json
+AGENTS.md
+.agents/
