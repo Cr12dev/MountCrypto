@@ -144,6 +144,12 @@ export function WatchlistPage({ userId }: { userId: string }) {
 
   return (
     <div className="p-4 md:p-6">
+      <div className="mb-6">
+        <p className="text-xs text-text-secondary leading-relaxed">
+          Track your favorite assets across all markets. Create custom lists to monitor
+          stocks, crypto, forex, and commodities at a glance.
+        </p>
+      </div>
       <div className="mb-4 flex items-center justify-between">
         <h1 className="title-sm">Watchlist</h1>
         {!creating && (

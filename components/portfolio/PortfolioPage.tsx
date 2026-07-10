@@ -163,6 +163,12 @@ export function PortfolioPage({ userId }: { userId: string }) {
 
   return (
     <div className="p-4 md:p-6">
+      <div className="mb-6">
+        <p className="text-xs text-text-secondary leading-relaxed">
+          Manage your investment portfolio. Track holdings, record transactions, and
+          monitor performance across stocks, crypto, forex, and commodities.
+        </p>
+      </div>
       <div className="mb-4 flex items-center justify-between">
         <h1 className="title-sm">Portfolio</h1>
         <button
