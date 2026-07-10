@@ -22,7 +22,7 @@ export async function middleware(request: NextRequest) {
     },
   );
 
-  const protectedPaths = ["/dashboard", "/watchlist", "/portfolio", "/settings"];
+  const protectedPaths = ["/dashboard", "/watchlist", "/portfolio", "/settings", "/news", "/alerts"];
   const authPaths = ["/login", "/register"];
 
   const { data: { user } } = await supabase.auth.getUser();

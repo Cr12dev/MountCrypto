@@ -13,6 +13,9 @@ const nextConfig = {
     remotePatterns: [
       { protocol: "https", hostname: "assets.coingecko.com" },
       { protocol: "https", hostname: "coin-images.coingecko.com" },
+      { protocol: "https", hostname: "s.yimg.com" },
+      { protocol: "https", hostname: "media.zenfs.com" },
+      { protocol: "https", hostname: "l.yimg.com" },
     ],
   },
 };

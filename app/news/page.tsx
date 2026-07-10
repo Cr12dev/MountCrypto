@@ -1,0 +1,175 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import type { NewsArticle } from "@/lib/types/news";
+
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  return `${Math.floor(days / 7)}w ago`;
+}
+
+const CATEGORIES = [
+  "All",
+  "stock market today",
+  "cryptocurrency news",
+  "forex market",
+  "commodities market",
+  "economy",
+];
+
+export default function NewsPage() {
+  const [articles, setArticles] = useState<NewsArticle[]>([]);
+  const [filtered, setFiltered] = useState<NewsArticle[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [category, setCategory] = useState("All");
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    fetch("/api/news")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setArticles(data);
+          setFiltered(data);
+        }
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    let result = articles;
+    if (category !== "All") {
+      result = result.filter(
+        (a) =>
+          a.title.toLowerCase().includes(category) ||
+          a.relatedTickers.some((t) =>
+            category.toLowerCase().includes(t.toLowerCase()),
+          ),
+      );
+    }
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter(
+        (a) =>
+          a.title.toLowerCase().includes(q) ||
+          a.publisher.toLowerCase().includes(q) ||
+          a.relatedTickers.some((t) => t.toLowerCase().includes(q)),
+      );
+    }
+    setFiltered(result);
+  }, [category, search, articles]);
+
+  return (
+    <div className="mx-auto max-w-6xl px-6 py-8">
+      <div className="mb-8">
+        <h1 className="title-sm mb-1">Market News</h1>
+        <p className="text-sm text-text-secondary">
+          Latest financial news from around the world
+        </p>
+      </div>
+
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap gap-1.5">
+          {CATEGORIES.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setCategory(cat)}
+              className={`rounded px-3 py-1.5 text-xs font-medium tracking-wide transition-colors ${
+                category === cat
+                  ? "bg-accent text-white"
+                  : "bg-bg-card text-text-secondary hover:bg-bg-hover hover:text-text-primary"
+              }`}
+            >
+              {cat === "All" ? "All" : cat.replace(/\b\w/g, (c) => c.toUpperCase()).replace(" news", "")}
+            </button>
+          ))}
+        </div>
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search news..."
+          className="w-full rounded border border-border bg-bg-card px-3 py-1.5 text-sm text-text-primary outline-none placeholder:text-text-secondary focus:border-accent sm:w-60 font-mono"
+        />
+      </div>
+
+      {loading ? (
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="animate-pulse rounded-lg bg-bg-card p-4">
+              <div className="mb-3 h-40 w-full rounded bg-bg-hover" />
+              <div className="mb-2 h-3 w-20 rounded bg-bg-hover" />
+              <div className="mb-1 h-4 w-full rounded bg-bg-hover" />
+              <div className="h-4 w-3/4 rounded bg-bg-hover" />
+            </div>
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
+        <p className="py-12 text-center text-sm text-text-secondary">No articles found.</p>
+      ) : (
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {filtered.map((article) => (
+            <Link
+              key={article.uuid}
+              href={`/news/${article.uuid}`}
+              className="group flex flex-col rounded-lg border border-border bg-bg-card transition-colors hover:border-accent/30 hover:bg-bg-hover"
+            >
+              <div className="relative h-40 w-full overflow-hidden rounded-t-lg bg-bg-hover">
+                {article.thumbnail ? (
+                  <Image
+                    src={article.thumbnail.url}
+                    alt={article.title}
+                    fill
+                    className="object-cover transition-transform duration-300 group-hover:scale-105"
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-text-secondary">
+                      <path d="M4 22h16a2 2 0 002-2V4a2 2 0 00-2-2H8a2 2 0 00-2 2v16a2 2 0 01-4 0V6" />
+                      <path d="M10 6h6" />
+                      <path d="M10 10h6" />
+                      <path d="M10 14h4" />
+                    </svg>
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-1 flex-col p-4">
+                <div className="mb-2 flex items-center gap-2 text-xs text-text-secondary">
+                  <span>{article.publisher}</span>
+                  <span>·</span>
+                  <span>{timeAgo(article.providerPublishTime)}</span>
+                </div>
+                <h2 className="mb-2 line-clamp-2 text-sm font-medium leading-snug text-text-primary transition-colors group-hover:text-accent">
+                  {article.title}
+                </h2>
+                {article.relatedTickers.length > 0 && (
+                  <div className="mt-auto flex flex-wrap gap-1">
+                    {article.relatedTickers.slice(0, 4).map((ticker) => (
+                      <span
+                        key={ticker}
+                        className="rounded bg-bg-surface px-1.5 py-0.5 text-[10px] font-medium text-text-secondary font-mono"
+                      >
+                        {ticker}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
