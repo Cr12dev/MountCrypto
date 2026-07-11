@@ -3,7 +3,19 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import type { NewsArticle } from "@/lib/types/news";
+import type { NewsArticle, NewsThumbnail } from "@/lib/types/news";
+
+const SOURCE_LABELS: Record<string, string> = {
+  bbc: "BBC News",
+  wsj: "Wall Street Journal",
+  nytimes: "The New York Times",
+  antena3: "Antena 3",
+  bild: "Bild",
+  economist: "The Economist",
+  ft: "Financial Times",
+};
+
+const SCRAPING_API = process.env.NEXT_PUBLIC_SCRAPING_API_URL;
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -44,12 +56,29 @@ export default function NewsPage() {
       })
       .catch(() => {});
 
-    const fetchScraped = fetch("/api/news/scraped")
-      .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data)) setScrapedArticles(data);
-      })
-      .catch(() => {});
+    const fetchScraped = SCRAPING_API
+      ? fetch(`${SCRAPING_API}/articles?limit=50`)
+          .then((r) => r.json())
+          .then((data: any[]) => {
+            if (Array.isArray(data)) {
+              setScrapedArticles(
+                data.map((a) => ({
+                  uuid: a.link,
+                  title: a.title,
+                  publisher: SOURCE_LABELS[a.source] ?? a.source,
+                  link: a.link,
+                  providerPublishTime: a.published,
+                  type: "STORY" as const,
+                  thumbnail: a.image_url
+                    ? ({ url: a.image_url, width: 1200, height: 630, tag: "scraped" } as NewsThumbnail)
+                    : null,
+                  relatedTickers: [] as string[],
+                })),
+              );
+            }
+          })
+          .catch(() => {})
+      : Promise.resolve();
 
     Promise.allSettled([fetchYahoo, fetchScraped]).finally(() => setLoading(false));
   }, []);
