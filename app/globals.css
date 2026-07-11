@@ -1,22 +1,23 @@
 @import "tailwindcss";
 
 @theme {
-  --color-bg-primary: #131722;
-  --color-bg-surface: #1e222d;
-  --color-bg-card: #2a2e39;
-  --color-bg-hover: #323542;
-  --color-border: #363a45;
-  --color-border-light: #2a2e39;
-  --color-text-primary: #d1d4dc;
-  --color-text-secondary: #787b86;
-  --color-green: #089981;
-  --color-red: #f23645;
-  --color-accent: #2962ff;
-  --color-accent-gold: #f0d043;
+  --color-bg-primary: #080b12;
+  --color-bg-surface: #111520;
+  --color-bg-card: #192032;
+  --color-bg-hover: #1f2840;
+  --color-border: #2a3348;
+  --color-border-light: #1e2740;
+  --color-text-primary: #e8eaf0;
+  --color-text-secondary: #8891a8;
+  --color-green: #00c853;
+  --color-red: #ff1744;
+  --color-accent: #448aff;
+  --color-accent-gold: #ffd740;
 
   --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   --font-mono: var(--font-mono), "SF Mono", ui-monospace, monospace;
   --font-display: var(--font-display), "Space Grotesk", sans-serif;
+  --font-serif: var(--font-serif), "DM Serif Display", serif;
 }
 
 html { scroll-behavior: smooth; }
@@ -31,8 +32,10 @@ body {
 
 /* Typography utilities */
 .title-sm { font-family: var(--font-display); font-size: 1rem; font-weight: 600; letter-spacing: -0.01em; color: var(--color-text-primary); }
-.title-xs { font-family: var(--font-display); font-size: 0.75rem; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-text-secondary); }
-.label { font-family: var(--font-mono); font-size: 0.625rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-text-secondary); }
+.title-xs { font-family: var(--font-display); font-size: 0.75rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-text-secondary); }
+.label { font-family: var(--font-mono); font-size: 0.625rem; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-text-secondary); }
+.display-number { font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; letter-spacing: -0.03em; line-height: 1; }
+.section-title { font-family: var(--font-serif); font-size: 0.8125rem; font-weight: 400; letter-spacing: 0.02em; color: var(--color-text-secondary); }
 
 @keyframes ticker {
   0% { transform: translateX(0); }
@@ -67,3 +70,26 @@ body {
 .animate-pulse-dot {
   animation: pulse-dot 2s ease-in-out infinite;
 }
+
+/* Ambient glow animation */
+@keyframes ambientGlow {
+  0%, 100% { opacity: 0.15; transform: scale(1); }
+  50% { opacity: 0.25; transform: scale(1.05); }
+}
+.animate-ambient-glow {
+  animation: ambientGlow 10s ease-in-out infinite;
+}
+
+/* Subtle card shadow */
+.card-shadow {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(42, 51, 72, 0.3);
+}
+.card-shadow:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(68, 138, 255, 0.15);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-text-secondary); }

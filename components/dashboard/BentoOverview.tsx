@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import Image from "next/image";
 import { Sparkline } from "@/components/crypto/Sparkline";
 import { CandlestickChart } from "@/components/charts/CandlestickChart";
+import { usePolling } from "@/lib/hooks/usePolling";
 import type { IndexQuote, StockQuote, ForexQuote, CommodityQuote, OhlcBar } from "@/lib/api/yahoo";
 
 type CoinMarket = { id: string; symbol: string; name: string; image: string; current_price: number; price_change_percentage_24h: number; price_change_percentage_1h_in_currency: number; price_change_percentage_7d_in_currency: number; price_change_percentage_30d_in_currency: number; price_change_percentage_1y_in_currency: number; sparkline_in_7d: { price: number[] } };
@@ -51,27 +52,38 @@ export function BentoOverview() {
   const [chartLoading, setChartLoading] = useState(true);
   const [loadSlow, setLoadSlow] = useState(false);
 
-  useEffect(() => {
-    const slowTimer = setTimeout(() => setLoadSlow(true), 8000);
+  const fetchAll = useCallback(async () => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000);
 
-    Promise.all([
-      fetch("/api/stocks?type=indices", { signal: controller.signal }).then((r) => r.json()),
-      fetch("/api/stocks?type=stocks", { signal: controller.signal }).then((r) => r.json()),
-      fetch("/api/crypto?per_page=3", { signal: controller.signal }).then((r) => r.json()),
-      fetch("/api/forex", { signal: controller.signal }).then((r) => r.json()),
-      fetch("/api/commodities", { signal: controller.signal }).then((r) => r.json()),
-    ]).then(([i, s, c, f, cm]) => {
+    try {
+      const [i, s, c, f, cm] = await Promise.all([
+        fetch("/api/stocks?type=indices", { signal: controller.signal }).then((r) => r.json()),
+        fetch("/api/stocks?type=stocks", { signal: controller.signal }).then((r) => r.json()),
+        fetch("/api/crypto?per_page=3", { signal: controller.signal }).then((r) => r.json()),
+        fetch("/api/forex", { signal: controller.signal }).then((r) => r.json()),
+        fetch("/api/commodities", { signal: controller.signal }).then((r) => r.json()),
+      ]);
       if (Array.isArray(i)) setIndices(i);
       if (Array.isArray(s)) setStocks(s);
       if (Array.isArray(c)) setCoins(c);
       if (Array.isArray(f)) setForex(f);
       if (Array.isArray(cm)) setCommodities(cm);
-    }).catch(() => {}).finally(() => { clearTimeout(timeout); clearTimeout(slowTimer); });
-
-    return () => { clearTimeout(timeout); clearTimeout(slowTimer); };
+      setLoadSlow(false);
+    } catch {
+      // aborted or network error — slow timer will set loadSlow
+    } finally {
+      clearTimeout(timeout);
+    }
   }, []);
+
+  useEffect(() => {
+    const slowTimer = setTimeout(() => setLoadSlow(true), 8000);
+    fetchAll();
+    return () => clearTimeout(slowTimer);
+  }, [fetchAll]);
+
+  usePolling(fetchAll, 10000);
 
   const fetchOhlc = useCallback(async (asset: ChartAsset, days: string) => {
     setChartLoading(true);
@@ -156,7 +168,7 @@ export function BentoOverview() {
       {/* ── MARKET SIDEBAR ── col-span-1, row-span-2 */}
       <div className="col-span-1 row-span-2 flex flex-col bg-bg-primary p-0">
         <div className="px-4 pb-1 pt-3">
-          <span className="title-xs">Indices</span>
+          <span className="section-title">Indices</span>
         </div>
         <div>
           {indices.map((idx) => {
@@ -169,14 +181,14 @@ export function BentoOverview() {
                 </div>
                 <div className="flex items-center gap-3 font-mono">
                   <span className="text-sm text-text-primary">{fmt(idx.price, 2)}</span>
-                  <span className={`w-20 text-right text-xs ${cn(up)}`}>{fmtPct(idx.changePercent)}</span>
+                  <span className={`w-20 text-right text-xs ${cn(up)}`} data-change={idx.changePercent}>{fmtPct(idx.changePercent)}</span>
                 </div>
               </div>
             );
           })}
         </div>
         <div className="mt-auto border-t border-border/20 px-4 py-2">
-          <span className="title-xs">Breadth</span>
+          <span className="section-title">Breadth</span>
           <div className="mt-1.5 flex items-center gap-2">
             <span className="font-mono text-xs text-green">{breadthGreen}</span>
             <span className="text-xs text-text-secondary">/</span>
@@ -190,7 +202,7 @@ export function BentoOverview() {
         </div>
 
         <div className="border-t border-border/20 px-4 pb-1 pt-2">
-          <span className="title-xs">Crypto</span>
+          <span className="section-title">Crypto</span>
         </div>
         <div className="flex flex-col">
           {coins.slice(0, 3).map((c) => {
@@ -222,7 +234,7 @@ export function BentoOverview() {
       {/* ── TOP MOVERS ── col-span-3 */}
       <div className="col-span-3 flex flex-col bg-bg-primary p-0">
         <div className="flex items-center justify-between px-4 pb-0 pt-2">
-          <span className="title-xs">Top Movers</span>
+          <span className="section-title">Top Movers</span>
           <a href="/dashboard/markets" className="text-xs text-accent">All →</a>
         </div>
         <div className="flex gap-px overflow-x-auto">
@@ -246,7 +258,7 @@ export function BentoOverview() {
       {/* ── FOREX / COMMODITIES ── */}
       <div className="col-span-1 bg-bg-primary p-0">
         <div className="flex items-center justify-between px-4 pb-0 pt-2">
-          <span className="title-xs">Forex</span>
+          <span className="section-title">Forex</span>
           <a href="/dashboard/forex" className="text-xs text-accent">All →</a>
         </div>
         <div className="grid grid-cols-2">
@@ -264,7 +276,7 @@ export function BentoOverview() {
 
       <div className="col-span-1 bg-bg-primary p-0">
         <div className="flex items-center justify-between px-4 pb-0 pt-2">
-          <span className="title-xs">Commodities</span>
+          <span className="section-title">Commodities</span>
           <a href="/dashboard/commodities" className="text-xs text-accent">All →</a>
         </div>
         <div className="grid grid-cols-2">
@@ -282,7 +294,7 @@ export function BentoOverview() {
 
       <div className="col-span-1 bg-bg-primary p-0">
         <div className="px-4 pb-0 pt-2">
-          <span className="title-xs">Pages</span>
+          <span className="section-title">Pages</span>
         </div>
         <div>
           {[

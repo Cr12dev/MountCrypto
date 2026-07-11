@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import Image from "next/image";
 import type { CoinMarket } from "@/lib/api/coingecko";
 import { DataTable } from "@/components/ui/DataTable";
 import { ChangeCell } from "@/components/ui/ChangeCell";
+import { usePolling } from "@/lib/hooks/usePolling";
 import { Sparkline } from "./Sparkline";
 
 function formatPrice(n: number) {
@@ -30,11 +31,22 @@ const timeframeKeys: { key: keyof CoinMarket; label: string }[] = [
   { key: "price_change_percentage_1y_in_currency", label: "1y" },
 ];
 
-export function CryptoTable({ coins }: { coins: CoinMarket[] }) {
+export function CryptoTable({ coins: initial }: { coins: CoinMarket[] }) {
+  const [coins, setCoins] = useState<CoinMarket[]>(initial);
   const [query, setQuery] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("market_cap_rank");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [page, setPage] = useState(0);
+
+  const fetchCoins = useCallback(() => {
+    fetch("/api/crypto?per_page=100")
+      .then((r) => r.json())
+      .then((data) => { if (Array.isArray(data)) setCoins(data); })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => { fetchCoins(); }, [fetchCoins]);
+  usePolling(fetchCoins, 10000);
 
   const filtered = useMemo(() => {
     if (!query.trim()) return coins;
