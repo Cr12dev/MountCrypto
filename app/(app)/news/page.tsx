@@ -201,13 +201,21 @@ export default function NewsPage() {
               >
                 <div className="relative h-40 w-full overflow-hidden rounded-t-lg bg-bg-hover">
                   {article.thumbnail ? (
-                    <Image
-                      src={article.thumbnail.url}
-                      alt={article.title}
-                      fill
-                      className="object-cover transition-transform duration-300 group-hover:scale-105"
-                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                    />
+                    scraped ? (
+                      <img
+                        src={article.thumbnail.url}
+                        alt={article.title}
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                    ) : (
+                      <Image
+                        src={article.thumbnail.url}
+                        alt={article.title}
+                        fill
+                        className="object-cover transition-transform duration-300 group-hover:scale-105"
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                      />
+                    )
                   ) : (
                     <div className="flex h-full items-center justify-center">
                       <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-text-secondary">
