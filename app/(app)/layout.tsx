@@ -4,11 +4,13 @@ import { MarketTicker } from "@/components/layout/MarketTicker";
 import { BottomPanel } from "@/components/layout/BottomPanel";
 import { NewsProvider } from "@/components/news/NewsContext";
 import { NewsRightSidebar } from "@/components/news/NewsRightSidebar";
+import { MarketGlow } from "@/components/ambient/MarketGlow";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <NewsProvider>
-      <div className="flex h-screen flex-col">
+      <MarketGlow />
+      <div className="relative z-10 flex h-screen flex-col">
         <div className="flex flex-1 overflow-hidden">
           <Sidebar />
           <div className="flex min-w-0 flex-1 flex-col">

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 
 const navItems = [
   { href: "/dashboard", label: "Overview", icon: "grid" },
@@ -19,31 +20,22 @@ const navItems = [
 const icons: Record<string, React.ReactNode> = {
   grid: (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="3" width="7" height="7" />
-      <rect x="14" y="3" width="7" height="7" />
-      <rect x="3" y="14" width="7" height="7" />
-      <rect x="14" y="14" width="7" height="7" />
+      <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" />
     </svg>
   ),
   chart: (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="18" y1="20" x2="18" y2="10" />
-      <line x1="12" y1="20" x2="12" y2="4" />
-      <line x1="6" y1="20" x2="6" y2="14" />
+      <line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" />
     </svg>
   ),
   hash: (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="4" y1="9" x2="20" y2="9" />
-      <line x1="4" y1="15" x2="20" y2="15" />
-      <line x1="10" y1="3" x2="8" y2="21" />
-      <line x1="16" y1="3" x2="14" y2="21" />
+      <line x1="4" y1="9" x2="20" y2="9" /><line x1="4" y1="15" x2="20" y2="15" /><line x1="10" y1="3" x2="8" y2="21" /><line x1="16" y1="3" x2="14" y2="21" />
     </svg>
   ),
   dollar: (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="12" y1="1" x2="12" y2="23" />
-      <path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
+      <line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
     </svg>
   ),
   drop: (
@@ -53,10 +45,7 @@ const icons: Record<string, React.ReactNode> = {
   ),
   news: (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 22h16a2 2 0 002-2V4a2 2 0 00-2-2H8a2 2 0 00-2 2v16a2 2 0 01-4 0V6" />
-      <path d="M10 6h6" />
-      <path d="M10 10h6" />
-      <path d="M10 14h4" />
+      <path d="M4 22h16a2 2 0 002-2V4a2 2 0 00-2-2H8a2 2 0 00-2 2v16a2 2 0 01-4 0V6" /><path d="M10 6h6" /><path d="M10 10h6" /><path d="M10 14h4" />
     </svg>
   ),
   star: (
@@ -66,32 +55,35 @@ const icons: Record<string, React.ReactNode> = {
   ),
   briefcase: (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
-      <path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16" />
+      <rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16" />
     </svg>
   ),
   bell: (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
-      <path d="M13.73 21a2 2 0 01-3.46 0" />
+      <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 01-3.46 0" />
     </svg>
   ),
   gear: (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="3" />
-      <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1.08-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1.08 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001.08 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1.08z" />
+      <circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1.08-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1.08 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001.08 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1.08z" />
     </svg>
   ),
 };
 
 export function Sidebar() {
   const pathname = usePathname();
+  const [hover, setHover] = useState(false);
 
   return (
-    <aside className="flex w-48 shrink-0 flex-col border-r border-border bg-bg-surface">
-      <Link href="/dashboard" className="group flex items-center gap-2 border-b border-border px-4 py-3">
-        <span className="font-display text-white text-sm font-semibold tracking-[0.15em] text-transparent">
-          MOUNTCRYPTO
+    <aside
+      className="flex shrink-0 flex-col border-r border-border bg-bg-surface transition-all duration-200"
+      style={{ width: hover ? "12rem" : "3.5rem" }}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
+      <Link href="/dashboard" className="flex items-center justify-center gap-2 border-b border-border px-3 py-3 overflow-hidden">
+        <span className="font-display text-sm font-bold tracking-[0.15em] whitespace-nowrap text-text-primary">
+          {hover ? "MOUNTCRYPTO" : "MC"}
         </span>
       </Link>
       <nav className="flex-1 space-y-0.5 px-2 py-3">
@@ -101,20 +93,21 @@ export function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
-              className={`font-display relative flex items-center gap-3 rounded px-3 py-2 text-xs font-medium tracking-[0.08em] transition-colors ${
+              className={`relative flex items-center justify-center rounded px-2 py-2 text-xs font-medium tracking-[0.08em] transition-colors whitespace-nowrap ${
                 isActive
                   ? "bg-accent/10 text-accent before:absolute before:left-0 before:top-1/2 before:h-4 before:w-0.5 before:-translate-y-1/2 before:rounded-r-full before:bg-accent"
                   : "text-text-secondary hover:bg-bg-hover hover:text-text-primary"
               }`}
+              style={{ gap: hover ? "0.625rem" : "0" }}
             >
-              {icons[item.icon]}
-              {item.label}
+              <span className="shrink-0">{icons[item.icon]}</span>
+              {hover && <span className="font-display overflow-hidden">{item.label}</span>}
             </Link>
           );
         })}
       </nav>
-      <div className="border-t border-border px-4 py-2.5">
-        <p className="font-display text-xs font-medium tracking-[0.08em] text-text-secondary">v1.0 · 4 markets</p>
+      <div className="border-t border-border px-3 py-2.5 overflow-hidden">
+        {hover && <p className="font-display text-xs font-medium tracking-[0.08em] text-text-secondary whitespace-nowrap">v1.0 · 4 markets</p>}
       </div>
     </aside>
   );

@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import type { StockQuote } from "@/lib/api/yahoo";
 import { DataTable } from "@/components/ui/DataTable";
 import { ChangeCell } from "@/components/ui/ChangeCell";
+import { usePolling } from "@/lib/hooks/usePolling";
 import { CHANGE_TIMEFRAMES } from "@/lib/api/timeframes";
 
 function formatCompact(n: number) {
@@ -17,12 +18,16 @@ export function StocksTable() {
   const [stocks, setStocks] = useState<StockQuote[]>([]);
   const [query, setQuery] = useState("");
 
-  useEffect(() => {
+  const fetchStocks = useCallback(() => {
     fetch("/api/stocks?type=stocks")
       .then((r) => r.json())
       .then((data) => { if (Array.isArray(data)) setStocks(data); })
       .catch(() => {});
   }, []);
+
+  usePolling(fetchStocks, 10000);
+
+  useEffect(() => { fetchStocks(); }, [fetchStocks]);
 
   const filtered = useMemo(() => {
     if (!query.trim()) return stocks;

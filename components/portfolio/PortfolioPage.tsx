@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { createHolding, deleteHolding, addTransaction, deleteTransaction } from "@/lib/actions/portfolio";
+import { generatePortfolioShareToken, revokePortfolioShareToken } from "@/lib/actions/share";
 import { AllocationChart } from "@/components/portfolio/AllocationChart";
 import type { ChangeMap } from "@/lib/api/timeframes";
 
@@ -66,6 +67,25 @@ export function PortfolioPage({ userId }: { userId: string }) {
   const [txQuantity, setTxQuantity] = useState("");
   const [txPrice, setTxPrice] = useState("");
   const [addingTx, setAddingTx] = useState(false);
+  const [shareToken, setShareToken] = useState<string | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
+  const [origin, setOrigin] = useState("");
+
+  useEffect(() => {
+    setOrigin(window.location.origin);
+  }, []);
+
+  useEffect(() => {
+    supabase
+      .from("portfolio_shares")
+      .select("share_token")
+      .eq("user_id", userId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) setShareToken(data.share_token);
+      });
+  }, [userId, supabase]);
 
   const fetchHoldings = useCallback(async () => {
     const { data, error } = await supabase
@@ -238,7 +258,7 @@ export function PortfolioPage({ userId }: { userId: string }) {
 
       {holdings.length > 0 && (
         <>
-          <div className="mb-4 grid grid-cols-[1fr_1fr_1fr_auto] gap-3">
+          <div className="mb-4 grid grid-cols-[1fr_1fr_1fr_auto_auto] gap-3">
             <div className="rounded-lg border border-border bg-bg-card/30 p-3">
               <p className="text-xs uppercase tracking-wider text-text-secondary">Invested</p>
               <p className="mt-1 font-mono text-sm font-semibold text-text-primary">{fmtCurrency(totalInvested)}</p>
@@ -275,6 +295,65 @@ export function PortfolioPage({ userId }: { userId: string }) {
             >
               Export CSV
             </button>
+            <div className="relative self-end">
+              {!shareToken ? (
+                <button
+                  onClick={async () => {
+                    try {
+                      const token = await generatePortfolioShareToken();
+                      setShareToken(token);
+                    } catch {}
+                  }}
+                  className="rounded border border-border px-2.5 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:border-text-secondary hover:text-text-primary"
+                >
+                  Share
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setShareOpen(!shareOpen)}
+                    className="rounded border border-accent/50 px-2.5 py-1.5 text-xs font-medium text-accent transition-colors hover:border-accent"
+                  >
+                    Shared
+                  </button>
+                  {shareOpen && (
+                    <div className="absolute right-0 top-full z-10 mt-1 w-72 rounded-lg border border-border bg-bg-card p-3 shadow-lg">
+                      <p className="mb-1 text-xs text-text-secondary">Share link</p>
+                      <div className="flex items-center gap-1">
+                        <input
+                          readOnly
+                          value={`${origin}/shared/portfolio/${shareToken}`}
+                          className="flex-1 rounded border border-border bg-bg-surface px-2 py-1 font-mono text-xs text-text-primary"
+                          onClick={(e) => (e.target as HTMLInputElement).select()}
+                        />
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(`${origin}/shared/portfolio/${shareToken}`);
+                            setShareCopied(true);
+                            setTimeout(() => setShareCopied(false), 2000);
+                          }}
+                          className="shrink-0 rounded bg-accent px-2 py-1 text-xs font-medium text-white transition-opacity hover:opacity-90"
+                        >
+                          {shareCopied ? "Copied!" : "Copy"}
+                        </button>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          try {
+                            await revokePortfolioShareToken();
+                            setShareToken(null);
+                            setShareOpen(false);
+                          } catch {}
+                        }}
+                        className="mt-2 text-xs text-text-secondary transition-colors hover:text-red"
+                      >
+                        Revoke share link
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
           </div>
 
           <div className="mb-4 grid gap-4 md:grid-cols-[1fr_300px]">

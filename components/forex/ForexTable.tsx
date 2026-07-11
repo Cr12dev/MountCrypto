@@ -1,21 +1,25 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import type { ForexQuote } from "@/lib/api/yahoo";
 import { DataTable } from "@/components/ui/DataTable";
 import { ChangeCell } from "@/components/ui/ChangeCell";
+import { usePolling } from "@/lib/hooks/usePolling";
 import { CHANGE_TIMEFRAMES } from "@/lib/api/timeframes";
 
 export function ForexTable() {
   const [pairs, setPairs] = useState<ForexQuote[]>([]);
   const [query, setQuery] = useState("");
 
-  useEffect(() => {
+  const fetchForex = useCallback(() => {
     fetch("/api/forex")
       .then((r) => r.json())
       .then((data) => { if (Array.isArray(data)) setPairs(data); })
       .catch(() => {});
   }, []);
+
+  useEffect(() => { fetchForex(); }, [fetchForex]);
+  usePolling(fetchForex, 10000);
 
   const filtered = useMemo(() => {
     if (!query.trim()) return pairs;

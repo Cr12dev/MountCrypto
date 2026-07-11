@@ -41,6 +41,29 @@ export type Database = {
           user_id?: string
         }
       }
+      portfolio_shares: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          id: string
+          share_token: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          share_token: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          share_token?: string
+          user_id?: string
+        }
+      }
       portfolio_transactions: {
         Row: {
           executed_at: string
@@ -69,34 +92,34 @@ export type Database = {
       }
       price_alerts: {
         Row: {
-          id: string
-          user_id: string
-          symbol: string
           asset_type: string
-          target_price: number
-          direction: "above" | "below"
-          triggered: boolean
           created_at: string
+          direction: string
+          id: string
+          symbol: string
+          target_price: number
+          triggered: boolean
+          user_id: string
         }
         Insert: {
-          id?: string
-          user_id: string
-          symbol: string
           asset_type: string
-          target_price: number
-          direction: "above" | "below"
-          triggered?: boolean
           created_at?: string
+          direction: string
+          id?: string
+          symbol: string
+          target_price: number
+          triggered?: boolean
+          user_id: string
         }
         Update: {
-          id?: string
-          user_id?: string
-          symbol?: string
           asset_type?: string
-          target_price?: number
-          direction?: "above" | "below"
-          triggered?: boolean
           created_at?: string
+          direction?: string
+          id?: string
+          symbol?: string
+          target_price?: number
+          triggered?: boolean
+          user_id?: string
         }
       }
       profiles: {
@@ -153,18 +176,21 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          share_token: string | null
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
           name: string
+          share_token?: string | null
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
+          share_token?: string | null
           user_id?: string
         }
       }

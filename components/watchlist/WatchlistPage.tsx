@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { createWatchlist, renameWatchlist, deleteWatchlist, addAsset, removeAsset } from "@/lib/actions/watchlist";
+import { generateWatchlistShareToken, revokeWatchlistShareToken } from "@/lib/actions/share";
 import type { ChangeMap } from "@/lib/api/timeframes";
 
 type AssetType = "stock" | "crypto" | "forex" | "commodity";
@@ -11,6 +12,7 @@ type Watchlist = {
   id: string;
   name: string;
   created_at: string;
+  share_token: string | null;
   assets: {
     id: string;
     symbol: string;
@@ -50,6 +52,13 @@ export function WatchlistPage({ userId }: { userId: string }) {
   const [addingTo, setAddingTo] = useState<string | null>(null);
   const [addSymbol, setAddSymbol] = useState("");
   const [addType, setAddType] = useState<AssetType>("stock");
+  const [openShare, setOpenShare] = useState<string | null>(null);
+  const [copied, setCopied] = useState("");
+  const [origin, setOrigin] = useState("");
+
+  useEffect(() => {
+    setOrigin(window.location.origin);
+  }, []);
 
   const fetchWatchlists = useCallback(async () => {
     const { data, error } = await supabase
@@ -220,12 +229,73 @@ export function WatchlistPage({ userId }: { userId: string }) {
                     {wl.name}
                   </button>
                 )}
-                <button
-                  onClick={() => handleDelete(wl.id)}
-                  className="text-xs text-text-secondary transition-colors hover:text-red"
-                >
-                  Delete
-                </button>
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    {!wl.share_token ? (
+                      <button
+                        onClick={async () => {
+                          try {
+                            const token = await generateWatchlistShareToken(wl.id);
+                            await fetchWatchlists();
+                          } catch {}
+                        }}
+                        className="text-xs text-text-secondary transition-colors hover:text-text-primary"
+                      >
+                        Share
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => setOpenShare(openShare === wl.id ? null : wl.id)}
+                          className="text-xs text-accent transition-colors hover:text-text-primary"
+                        >
+                          Shared
+                        </button>
+                        {openShare === wl.id && (
+                          <div className="absolute right-0 top-full z-10 mt-1 w-72 rounded-lg border border-border bg-bg-card p-3 shadow-lg">
+                            <p className="mb-1 text-xs text-text-secondary">Share link</p>
+                            <div className="flex items-center gap-1">
+                              <input
+                                readOnly
+                                value={`${origin}/shared/watchlist/${wl.share_token}`}
+                                className="flex-1 rounded border border-border bg-bg-surface px-2 py-1 font-mono text-xs text-text-primary"
+                                onClick={(e) => (e.target as HTMLInputElement).select()}
+                              />
+                              <button
+                                onClick={() => {
+                                  navigator.clipboard.writeText(`${origin}/shared/watchlist/${wl.share_token}`);
+                                  setCopied(wl.id);
+                                  setTimeout(() => setCopied(""), 2000);
+                                }}
+                                className="shrink-0 rounded bg-accent px-2 py-1 text-xs font-medium text-white transition-opacity hover:opacity-90"
+                              >
+                                {copied === wl.id ? "Copied!" : "Copy"}
+                              </button>
+                            </div>
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await revokeWatchlistShareToken(wl.id);
+                                  await fetchWatchlists();
+                                  setOpenShare(null);
+                                } catch {}
+                              }}
+                              className="mt-2 text-xs text-text-secondary transition-colors hover:text-red"
+                            >
+                              Revoke share link
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => handleDelete(wl.id)}
+                    className="text-xs text-text-secondary transition-colors hover:text-red"
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
 
               {wl.assets.length === 0 ? (

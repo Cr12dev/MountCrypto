@@ -4,15 +4,15 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import type { OhlcBar } from "@/lib/api/yahoo";
 
 const COLORS = {
-  bg: "#131722",
-  grid: "#2a2e39",
-  crosshair: "#758696",
-  text: "#787b86",
+  bg: "#080b12",
+  grid: "#192032",
+  crosshair: "#5d6b82",
+  text: "#5d6b82",
   textPrimary: "#d1d4dc",
-  green: "#089981",
-  red: "#f23645",
-  tooltipBg: "#1e222d",
-  tooltipBorder: "#363a45",
+  green: "#00c853",
+  red: "#ff1744",
+  tooltipBg: "#111520",
+  tooltipBorder: "#1e2a3a",
 };
 
 const RIGHT = 64;

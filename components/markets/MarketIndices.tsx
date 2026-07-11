@@ -1,17 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import type { IndexQuote } from "@/lib/api/yahoo";
+import { usePolling } from "@/lib/hooks/usePolling";
 
 export function MarketIndices() {
   const [indices, setIndices] = useState<IndexQuote[]>([]);
 
-  useEffect(() => {
+  const fetchIndices = useCallback(() => {
     fetch("/api/stocks?type=indices")
       .then((r) => r.json())
       .then((data) => { if (Array.isArray(data)) setIndices(data); })
       .catch(() => {});
   }, []);
+
+  useEffect(() => { fetchIndices(); }, [fetchIndices]);
+  usePolling(fetchIndices, 10000);
 
   if (!indices.length) return null;
 

@@ -35,7 +35,7 @@ export function DataTable<T extends object>({
                 : "";
               const isActive = sortKey === col.key;
               return (
-                <th key={col.key} className={`${hideClass} px-3 py-3 first:pl-0 last:pr-0`}>
+                <th key={col.key} className={`${hideClass} px-2.5 py-2.5 first:pl-0 last:pr-0 text-[11px]`}>
                   {col.sortable && onSort ? (
                     <button
                       onClick={() => onSort(col.key)}
@@ -60,8 +60,8 @@ export function DataTable<T extends object>({
           {data.map((row, i) => (
             <tr
               key={(row as Record<string, unknown>).id as string ?? `row-${i}`}
-              className={`border-b border-border/30 transition-colors hover:bg-bg-hover/50 ${
-                i % 2 === 1 ? "bg-bg-surface/30" : ""
+              className={`border-b border-border/20 transition-colors hover:bg-bg-hover/40 ${
+                i % 2 === 1 ? "bg-bg-surface/20" : ""
               }`}
             >
               {columns.map((col) => {
@@ -70,7 +70,7 @@ export function DataTable<T extends object>({
                   : col.hide === "lg" ? "hidden lg:table-cell"
                   : "";
                 return (
-                  <td key={col.key} className={`${hideClass} px-3 py-3 first:pl-0 last:pr-0`}>
+                  <td key={col.key} className={`${hideClass} px-2.5 py-2.5 first:pl-0 last:pr-0`}>
                     {col.render(row)}
                   </td>
                 );

@@ -1,21 +1,25 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import type { CommodityQuote } from "@/lib/api/yahoo";
 import { DataTable } from "@/components/ui/DataTable";
 import { ChangeCell } from "@/components/ui/ChangeCell";
+import { usePolling } from "@/lib/hooks/usePolling";
 import { CHANGE_TIMEFRAMES } from "@/lib/api/timeframes";
 
 export function CommoditiesTable() {
   const [items, setItems] = useState<CommodityQuote[]>([]);
   const [query, setQuery] = useState("");
 
-  useEffect(() => {
+  const fetchCommodities = useCallback(() => {
     fetch("/api/commodities")
       .then((r) => r.json())
       .then((data) => { if (Array.isArray(data)) setItems(data); })
       .catch(() => {});
   }, []);
+
+  useEffect(() => { fetchCommodities(); }, [fetchCommodities]);
+  usePolling(fetchCommodities, 10000);
 
   const filtered = useMemo(() => {
     if (!query.trim()) return items;
