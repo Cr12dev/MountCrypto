@@ -3,7 +3,19 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import type { NewsArticle } from "@/lib/types/news";
+import type { NewsArticle, NewsThumbnail } from "@/lib/types/news";
+
+const SOURCE_LABELS: Record<string, string> = {
+  bbc: "BBC News",
+  wsj: "Wall Street Journal",
+  nytimes: "The New York Times",
+  antena3: "Antena 3",
+  bild: "Bild",
+  economist: "The Economist",
+  ft: "Financial Times",
+};
+
+const SCRAPING_API = process.env.NEXT_PUBLIC_SCRAPING_API_URL;
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -44,12 +56,30 @@ export default function NewsPage() {
       })
       .catch(() => {});
 
-    const fetchScraped = fetch("/api/news/scraped")
-      .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data)) setScrapedArticles(data);
-      })
-      .catch(() => {});
+    const fetchScraped = SCRAPING_API
+      ? fetch(`${SCRAPING_API}/scrape?sources=bbc,nytimes,bild,economist&timeout=45`, { signal: AbortSignal.timeout(55000) })
+          .then((r) => r.json())
+          .then((data: any) => {
+            const list: any[] = data?.articles ?? data;
+            if (Array.isArray(list)) {
+              setScrapedArticles(
+                list.map((a) => ({
+                  uuid: a.id,
+                  title: a.title,
+                  publisher: SOURCE_LABELS[a.source] ?? a.source,
+                  link: a.link,
+                  providerPublishTime: a.published,
+                  type: "STORY" as const,
+                  thumbnail: a.image_url
+                    ? ({ url: a.image_url, width: 1200, height: 630, tag: "scraped" } as NewsThumbnail)
+                    : null,
+                  relatedTickers: [] as string[],
+                })),
+              );
+            }
+          })
+          .catch(() => {})
+      : Promise.resolve();
 
     Promise.allSettled([fetchYahoo, fetchScraped]).finally(() => setLoading(false));
   }, []);
@@ -85,7 +115,8 @@ export default function NewsPage() {
     );
   }, [tab, category, search, yahooArticles, scrapedArticles]);
 
-  const isScraped = (uuid: string) => uuid.startsWith("http");
+  const scrapedUuids = useMemo(() => new Set(scrapedArticles.map((a) => a.uuid)), [scrapedArticles]);
+  const isScraped = (uuid: string) => scrapedUuids.has(uuid);
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
@@ -170,13 +201,21 @@ export default function NewsPage() {
               >
                 <div className="relative h-40 w-full overflow-hidden rounded-t-lg bg-bg-hover">
                   {article.thumbnail ? (
-                    <Image
-                      src={article.thumbnail.url}
-                      alt={article.title}
-                      fill
-                      className="object-cover transition-transform duration-300 group-hover:scale-105"
-                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                    />
+                    scraped ? (
+                      <img
+                        src={article.thumbnail.url}
+                        alt={article.title}
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                    ) : (
+                      <Image
+                        src={article.thumbnail.url}
+                        alt={article.title}
+                        fill
+                        className="object-cover transition-transform duration-300 group-hover:scale-105"
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                      />
+                    )
                   ) : (
                     <div className="flex h-full items-center justify-center">
                       <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-text-secondary">
