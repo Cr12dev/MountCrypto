@@ -64,7 +64,7 @@ export default function NewsPage() {
             if (Array.isArray(list)) {
               setScrapedArticles(
                 list.map((a) => ({
-                  uuid: a.link,
+                  uuid: a.id,
                   title: a.title,
                   publisher: SOURCE_LABELS[a.source] ?? a.source,
                   link: a.link,
@@ -115,7 +115,8 @@ export default function NewsPage() {
     );
   }, [tab, category, search, yahooArticles, scrapedArticles]);
 
-  const isScraped = (uuid: string) => uuid.startsWith("http");
+  const scrapedUuids = useMemo(() => new Set(scrapedArticles.map((a) => a.uuid)), [scrapedArticles]);
+  const isScraped = (uuid: string) => scrapedUuids.has(uuid);
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
