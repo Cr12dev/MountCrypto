@@ -14,7 +14,7 @@ const SOURCE_LABELS: Record<string, string> = {
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const sources = searchParams.get("sources") ?? undefined;
-  const limit = searchParams.get("limit") ?? "20";
+  const _limit = searchParams.get("limit") ?? "20";
 
   const apiUrl = process.env.SCRAPING_API_URL;
   if (!apiUrl) {
@@ -22,32 +22,27 @@ export async function GET(request: Request) {
   }
 
   try {
-    const params = new URLSearchParams({ limit });
-    if (sources) params.set("sources", sources);
+    const params = new URLSearchParams({ timeout: "45" });
+    params.set("sources", sources ?? "bbc,nytimes,bild,economist");
 
-    const res = await fetch(`${apiUrl}/articles?${params}`, {
-      signal: AbortSignal.timeout(10000),
+    const res = await fetch(`${apiUrl}/scrape?${params}`, {
+      signal: AbortSignal.timeout(55000),
     });
     if (!res.ok) throw new Error(`Scraping API returned ${res.status}`);
 
-    const raw: Array<{
-      source: string;
-      title: string;
-      url: string;
-      summary: string;
-      published: string;
-      thumbnail: string | null;
-    }> = await res.json();
+    const body = await res.json();
+    const raw = body?.articles ?? body;
+    if (!Array.isArray(raw)) throw new Error("Invalid response from scraping API");
 
-    const articles: NewsArticle[] = raw.map((a) => ({
-      uuid: a.url,
+    const articles: NewsArticle[] = raw.map((a: any) => ({
+      uuid: a.id,
       title: a.title,
       publisher: SOURCE_LABELS[a.source] ?? a.source,
-      link: a.url,
+      link: a.link,
       providerPublishTime: a.published,
       type: "STORY",
-      thumbnail: a.thumbnail
-        ? { url: a.thumbnail, width: 1200, height: 630, tag: "scraped" }
+      thumbnail: a.image_url
+        ? { url: a.image_url, width: 1200, height: 630, tag: "scraped" }
         : null,
       relatedTickers: [],
     }));

@@ -70,6 +70,21 @@ export async function deleteTransaction(transactionId: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
 
+  const { data: txn } = await supabase
+    .from("portfolio_transactions")
+    .select("holding_id")
+    .eq("id", transactionId)
+    .single();
+  if (!txn) throw new Error("Transaction not found");
+
+  const { data: holding } = await supabase
+    .from("portfolio_holdings")
+    .select("id")
+    .eq("id", txn.holding_id)
+    .eq("user_id", user.id)
+    .single();
+  if (!holding) throw new Error("Unauthorized");
+
   const { error } = await supabase
     .from("portfolio_transactions")
     .delete()

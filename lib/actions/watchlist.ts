@@ -70,6 +70,21 @@ export async function removeAsset(assetId: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
 
+  const { data: asset } = await supabase
+    .from("watchlist_assets")
+    .select("watchlist_id")
+    .eq("id", assetId)
+    .single();
+  if (!asset) throw new Error("Asset not found");
+
+  const { data: watchlist } = await supabase
+    .from("watchlists")
+    .select("id")
+    .eq("id", asset.watchlist_id)
+    .eq("user_id", user.id)
+    .single();
+  if (!watchlist) throw new Error("Unauthorized");
+
   const { error } = await supabase
     .from("watchlist_assets")
     .delete()
@@ -81,6 +96,24 @@ export async function removeAsset(assetId: string) {
 
 export async function reorderAsset(assetId: string, position: number) {
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { data: asset } = await supabase
+    .from("watchlist_assets")
+    .select("watchlist_id")
+    .eq("id", assetId)
+    .single();
+  if (!asset) throw new Error("Asset not found");
+
+  const { data: watchlist } = await supabase
+    .from("watchlists")
+    .select("id")
+    .eq("id", asset.watchlist_id)
+    .eq("user_id", user.id)
+    .single();
+  if (!watchlist) throw new Error("Unauthorized");
+
   const { error } = await supabase
     .from("watchlist_assets")
     .update({ position })
