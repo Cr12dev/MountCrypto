@@ -57,12 +57,13 @@ export default function NewsPage() {
       .catch(() => {});
 
     const fetchScraped = SCRAPING_API
-      ? fetch(`${SCRAPING_API}/articles?limit=50`)
+      ? fetch(`${SCRAPING_API}/scrape?sources=bbc,nytimes&timeout=45`, { signal: AbortSignal.timeout(55000) })
           .then((r) => r.json())
-          .then((data: any[]) => {
-            if (Array.isArray(data)) {
+          .then((data: any) => {
+            const list: any[] = data?.articles ?? data;
+            if (Array.isArray(list)) {
               setScrapedArticles(
-                data.map((a) => ({
+                list.map((a) => ({
                   uuid: a.link,
                   title: a.title,
                   publisher: SOURCE_LABELS[a.source] ?? a.source,
