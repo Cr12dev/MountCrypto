@@ -3,19 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import type { NewsArticle, NewsThumbnail } from "@/lib/types/news";
+import type { NewsArticle } from "@/lib/types/news";
 
-const SOURCE_LABELS: Record<string, string> = {
-  bbc: "BBC News",
-  wsj: "Wall Street Journal",
-  nytimes: "The New York Times",
-  antena3: "Antena 3",
-  bild: "Bild",
-  economist: "The Economist",
-  ft: "Financial Times",
-};
 
-const SCRAPING_API = process.env.NEXT_PUBLIC_SCRAPING_API_URL;
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -56,30 +46,15 @@ export default function NewsPage() {
       })
       .catch(() => {});
 
-    const fetchScraped = SCRAPING_API
-      ? fetch(`${SCRAPING_API}/scrape?sources=bbc,nytimes,bild,economist&timeout=45`, { signal: AbortSignal.timeout(55000) })
-          .then((r) => r.json())
-          .then((data: any) => {
-            const list: any[] = data?.articles ?? data;
-            if (Array.isArray(list)) {
-              setScrapedArticles(
-                list.map((a) => ({
-                  uuid: a.id,
-                  title: a.title,
-                  publisher: SOURCE_LABELS[a.source] ?? a.source,
-                  link: a.link,
-                  providerPublishTime: a.published,
-                  type: "STORY" as const,
-                  thumbnail: a.image_url
-                    ? ({ url: a.image_url, width: 1200, height: 630, tag: "scraped" } as NewsThumbnail)
-                    : null,
-                  relatedTickers: [] as string[],
-                })),
-              );
-            }
-          })
-          .catch(() => {})
-      : Promise.resolve();
+    const fetchScraped = fetch("/api/news/scraped")
+        .then((r) => r.json())
+        .then((data: any) => {
+          const list: any[] = data?.articles ?? data;
+          if (Array.isArray(list)) {
+            setScrapedArticles(list);
+          }
+        })
+        .catch(() => {});
 
     Promise.allSettled([fetchYahoo, fetchScraped]).finally(() => setLoading(false));
   }, []);

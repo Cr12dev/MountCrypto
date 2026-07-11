@@ -89,10 +89,9 @@ export default async function AssetDetailPage({
       {coin.description.en && (
         <div className="mt-4 rounded-lg border border-border bg-bg-card p-4">
           <p className="mb-2 text-xs font-medium uppercase tracking-wider text-text-secondary">About</p>
-          <p
-            className="text-xs leading-relaxed text-text-secondary [&_a]:text-accent [&_a]:hover:underline"
-            dangerouslySetInnerHTML={{ __html: coin.description.en.split(". ").slice(0, 5).join(". ") + "." }}
-          />
+          <p className="text-xs leading-relaxed text-text-secondary">
+            {coin.description.en.replace(/<[^>]*>/g, "").split(". ").slice(0, 5).join(". ") + "."}
+          </p>
         </div>
       )}
     </div>
