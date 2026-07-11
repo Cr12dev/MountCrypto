@@ -57,7 +57,7 @@ export default function NewsPage() {
       .catch(() => {});
 
     const fetchScraped = SCRAPING_API
-      ? fetch(`${SCRAPING_API}/scrape?sources=bbc,nytimes&timeout=45`, { signal: AbortSignal.timeout(55000) })
+      ? fetch(`${SCRAPING_API}/scrape?sources=bbc,nytimes,bild,economist&timeout=45`, { signal: AbortSignal.timeout(55000) })
           .then((r) => r.json())
           .then((data: any) => {
             const list: any[] = data?.articles ?? data;
