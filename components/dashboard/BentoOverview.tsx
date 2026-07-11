@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import Image from "next/image";
 import { Sparkline } from "@/components/crypto/Sparkline";
 import { CandlestickChart } from "@/components/charts/CandlestickChart";
@@ -70,8 +70,8 @@ export function BentoOverview() {
       if (Array.isArray(f)) setForex(f);
       if (Array.isArray(cm)) setCommodities(cm);
       setLoadSlow(false);
-    } catch {
-      // aborted or network error — slow timer will set loadSlow
+    } catch (err) {
+      console.error("BentoOverview fetchAll failed:", err);
     } finally {
       clearTimeout(timeout);
     }
@@ -85,20 +85,29 @@ export function BentoOverview() {
 
   usePolling(fetchAll, 10000);
 
-  const fetchOhlc = useCallback(async (asset: ChartAsset, days: string) => {
+  const abortRef = useRef<AbortController | null>(null);
+
+  const fetchOhlc = useCallback(async (asset: ChartAsset, days: string, signal: AbortSignal) => {
     setChartLoading(true);
     try {
-      const res = await fetch(`/api/ohlc?symbol=${asset.symbol}&type=${asset.type}&days=${days}`);
+      const res = await fetch(`/api/ohlc?symbol=${asset.symbol}&type=${asset.type}&days=${days}`, { signal });
       const data = await res.json();
       if (Array.isArray(data)) setChartData(data);
-    } catch {
+    } catch (err) {
+      if (err instanceof Error && err.name !== "AbortError") {
+        console.error("fetchOhlc failed:", err);
+      }
       setChartData([]);
     }
     setChartLoading(false);
   }, []);
 
   useEffect(() => {
-    fetchOhlc(chartAsset, chartDays);
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    fetchOhlc(chartAsset, chartDays, controller.signal);
+    return () => { controller.abort(); };
   }, [chartAsset, chartDays, fetchOhlc]);
 
   const topMovers = [...stocks].sort((a, b) => Math.abs(b.changePercent) - Math.abs(a.changePercent));

@@ -3,6 +3,9 @@ import type { ChangeMap } from "./timeframes";
 
 const yahooFinance = new YahooFinance();
 
+const CACHE_TTL = 60_000;
+const changeCache = new Map<string, { data: ChangeMap; at: number }>();
+
 export type { ChangeMap } from "./timeframes";
 
 export type IndexQuote = {
@@ -120,11 +123,14 @@ function daysAgo(days: number): Date {
 }
 
 async function fetchChanges(symbol: string): Promise<ChangeMap> {
+  const cached = changeCache.get(symbol);
+  if (cached && Date.now() - cached.at < CACHE_TTL) return cached.data;
+
   const changes: ChangeMap = {};
 
   try {
     const daily = (await yahooFinance.chart(symbol, {
-      period1: daysAgo(365 * 5 + 60),
+      period1: daysAgo(400),
       interval: "1d",
       return: "array",
     })) as unknown as { quotes: ChartQuote[] };
@@ -147,19 +153,20 @@ async function fetchChanges(symbol: string): Promise<ChangeMap> {
         const idx = prices.length - 29;
         changes["28d"] = ((prices[prices.length - 1] - prices[idx]) / prices[idx]) * 100;
       }
-      const yearIdx = Math.min(252, prices.length - 1);
-      if (prices.length > yearIdx) {
-        const idx = prices.length - 1 - yearIdx;
+      if (prices.length >= 252) {
+        const idx = prices.length - 252;
         changes["1y"] = ((prices[prices.length - 1] - prices[idx]) / prices[idx]) * 100;
       }
-      const fiveYearIdx = Math.min(1260, prices.length - 1);
-      if (prices.length > fiveYearIdx) {
-        const idx = prices.length - 1 - fiveYearIdx;
+      if (prices.length >= 1260) {
+        const idx = prices.length - 1260;
         changes["5y"] = ((prices[prices.length - 1] - prices[idx]) / prices[idx]) * 100;
       }
     }
-  } catch {}
+  } catch {
+    console.error("fetchChanges failed for", symbol);
+  }
 
+  changeCache.set(symbol, { data: changes, at: Date.now() });
   return changes;
 }
 

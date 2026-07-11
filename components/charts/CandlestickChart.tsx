@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import type { OhlcBar } from "@/lib/api/yahoo";
 
 const COLORS = {
@@ -29,15 +29,14 @@ export function CandlestickChart({
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const overlayRef = useRef<HTMLCanvasElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
-
-  const [visibleStart, setVisibleStart] = useState(0);
-  const [visibleCount, setVisibleCount] = useState(40);
-  const [crosshair, setCrosshair] = useState<{ x: number; y: number } | null>(null);
-
+  const crosshairRef = useRef<{ x: number; y: number } | null>(null);
   const dragRef = useRef<{ startX: number; startIdx: number } | null>(null);
+  const visibleStartRef = useRef(0);
+  const visibleCountRef = useRef(40);
 
-  const draw = useCallback(() => {
+  const drawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
     if (!canvas || !container || !data.length) return;
@@ -61,12 +60,14 @@ export function CandlestickChart({
 
     const chartW = w - LEFT - RIGHT;
     const chartH = h - TOP - BOTTOM;
+    const vs = visibleStartRef.current;
+    const vc = visibleCountRef.current;
 
-    const end = Math.min(visibleStart + visibleCount, data.length);
-    const slice = data.slice(visibleStart, end);
+    const end = Math.min(vs + vc, data.length);
+    const slice = data.slice(vs, end);
     if (!slice.length) return;
 
-    const candleW = Math.max(2, Math.floor(chartW / visibleCount) - 1);
+    const candleW = Math.max(2, Math.floor(chartW / vc) - 1);
     const halfW = Math.max(1, Math.floor(candleW / 2));
 
     let minP = Infinity, maxP = -Infinity;
@@ -81,10 +82,6 @@ export function CandlestickChart({
 
     function yVal(v: number) {
       return TOP + chartH - ((v - minP) / range) * chartH;
-    }
-
-    function xVal(idx: number) {
-      return LEFT + (idx - visibleStart) * (candleW + 1) + halfW;
     }
 
     ctx.save();
@@ -159,82 +156,144 @@ export function CandlestickChart({
       const label = `${d.getUTCHours().toString().padStart(2, "0")}:${d.getUTCMinutes().toString().padStart(2, "0")}`;
       ctx.fillText(label, x, h - BOTTOM + 8);
     }
+  }, [data, height]);
 
-    if (crosshair && crosshair.x >= LEFT && crosshair.x <= LEFT + chartW && crosshair.y >= TOP && crosshair.y <= TOP + chartH) {
-      ctx.save();
-      ctx.strokeStyle = COLORS.crosshair;
-      ctx.lineWidth = 1;
-      ctx.setLineDash([4, 4]);
-      ctx.beginPath();
-      ctx.moveTo(crosshair.x, TOP);
-      ctx.lineTo(crosshair.x, TOP + chartH);
-      ctx.moveTo(LEFT, crosshair.y);
-      ctx.lineTo(LEFT + chartW, crosshair.y);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.restore();
+  const drawOverlay = useCallback(() => {
+    const overlay = overlayRef.current;
+    const container = containerRef.current;
+    if (!overlay || !container || !data.length) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    const w = container.getBoundingClientRect().width;
+    const h = height;
+
+    overlay.width = w * dpr;
+    overlay.height = h * dpr;
+    overlay.style.width = `${w}px`;
+    overlay.style.height = `${h}px`;
+
+    const ctx = overlay.getContext("2d")!;
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, w, h);
+
+    const chartW = w - LEFT - RIGHT;
+    const chartH = h - TOP - BOTTOM;
+    const vs = visibleStartRef.current;
+    const vc = visibleCountRef.current;
+    const end = Math.min(vs + vc, data.length);
+    const slice = data.slice(vs, end);
+    if (!slice.length) return;
+
+    const candleW = Math.max(2, Math.floor(chartW / vc) - 1);
+    const halfW = Math.max(1, Math.floor(candleW / 2));
+
+    let minP = Infinity, maxP = -Infinity;
+    for (const c of slice) {
+      if (c.low < minP) minP = c.low;
+      if (c.high > maxP) maxP = c.high;
+    }
+    const pad = (maxP - minP) * 0.08 || 1;
+    minP -= pad;
+    maxP += pad;
+    const range = maxP - minP;
+
+    function yVal(v: number) {
+      return TOP + chartH - ((v - minP) / range) * chartH;
     }
 
+    function xVal(idx: number) {
+      return LEFT + (idx - vs) * (candleW + 1) + halfW;
+    }
+
+    const crosshair = crosshairRef.current;
+    if (!crosshair || crosshair.x < LEFT || crosshair.x > LEFT + chartW || crosshair.y < TOP || crosshair.y > TOP + chartH) {
+      const tooltip = tooltipRef.current;
+      if (tooltip) tooltip.style.display = "none";
+      return;
+    }
+
+    ctx.save();
+    ctx.strokeStyle = COLORS.crosshair;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(crosshair.x, TOP);
+    ctx.lineTo(crosshair.x, TOP + chartH);
+    ctx.moveTo(LEFT, crosshair.y);
+    ctx.lineTo(LEFT + chartW, crosshair.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+
+    const idx = Math.round((crosshair.x - LEFT - halfW) / (candleW + 1));
+    const c = slice[idx];
+    if (!c) return;
+
+    const isUp = c.close >= c.open;
+    const d = new Date(c.time * 1000);
     const tooltip = tooltipRef.current;
-    if (crosshair && crosshair.x >= LEFT && crosshair.x <= LEFT + chartW) {
-      const idx = Math.round((crosshair.x - LEFT - halfW) / (candleW + 1));
-      const c = slice[idx];
-      if (c) {
-        const isUp = c.close >= c.open;
-        const d = new Date(c.time * 1000);
-        tooltip!.style.display = "block";
-        tooltip!.innerHTML = `
-          <div style="font:10px JetBrains Mono,monospace;color:${COLORS.text}">${d.toUTCString().slice(5, 22)}</div>
-          <div style="font:11px JetBrains Mono,monospace;color:${COLORS.textPrimary};margin-top:2px">
-            O: <span style="color:${isUp ? COLORS.green : COLORS.red}">${fmtPrice(c.open)}</span>
-            H: <span style="color:${isUp ? COLORS.green : COLORS.red}">${fmtPrice(c.high)}</span>
-          </div>
-          <div style="font:11px JetBrains Mono,monospace;color:${COLORS.textPrimary}">
-            L: <span style="color:${isUp ? COLORS.green : COLORS.red}">${fmtPrice(c.low)}</span>
-            C: <span style="color:${isUp ? COLORS.green : COLORS.red}">${fmtPrice(c.close)}</span>
-          </div>
-        `;
-        const tooltipW = tooltip!.offsetWidth;
-        const tooltipH = tooltip!.offsetHeight;
-        let tx = xVal(idx) - tooltipW / 2;
-        if (tx < 4) tx = 4;
-        if (tx + tooltipW > w - 4) tx = w - tooltipW - 4;
-        let ty = crosshair.y - tooltipH - 12;
-        if (ty < 4) ty = crosshair.y + 12;
-        tooltip!.style.left = `${tx}px`;
-        tooltip!.style.top = `${ty}px`;
-      }
-    } else {
-      tooltip!.style.display = "none";
-    }
-  }, [data, height, visibleStart, visibleCount, crosshair]);
+    if (!tooltip) return;
+
+    tooltip.style.display = "block";
+    tooltip.innerHTML = `
+      <div style="font:10px JetBrains Mono,monospace;color:${COLORS.text}">${d.toUTCString().slice(5, 22)}</div>
+      <div style="font:11px JetBrains Mono,monospace;color:${COLORS.textPrimary};margin-top:2px">
+        O: <span style="color:${isUp ? COLORS.green : COLORS.red}">${fmtPrice(c.open)}</span>
+        H: <span style="color:${isUp ? COLORS.green : COLORS.red}">${fmtPrice(c.high)}</span>
+      </div>
+      <div style="font:11px JetBrains Mono,monospace;color:${COLORS.textPrimary}">
+        L: <span style="color:${isUp ? COLORS.green : COLORS.red}">${fmtPrice(c.low)}</span>
+        C: <span style="color:${isUp ? COLORS.green : COLORS.red}">${fmtPrice(c.close)}</span>
+      </div>
+    `;
+    const tooltipW = tooltip.offsetWidth;
+    const tooltipH = tooltip.offsetHeight;
+    let tx = xVal(idx) - tooltipW / 2;
+    if (tx < 4) tx = 4;
+    if (tx + tooltipW > w - 4) tx = w - tooltipW - 4;
+    let ty = crosshair.y - tooltipH - 12;
+    if (ty < 4) ty = crosshair.y + 12;
+    tooltip.style.left = `${tx}px`;
+    tooltip.style.top = `${ty}px`;
+  }, [data, height]);
 
   useEffect(() => {
-    draw();
-    const onResize = () => draw();
+    drawCanvas();
+    const onResize = () => drawCanvas();
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
-  }, [draw]);
+  }, [drawCanvas]);
+
+  useEffect(() => {
+    let raf: number;
+    function loop() {
+      drawOverlay();
+      raf = requestAnimationFrame(loop);
+    }
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [drawOverlay]);
 
   const onMouseMove = useCallback((e: React.MouseEvent) => {
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return;
-    setCrosshair({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+    crosshairRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
   }, []);
 
   const onMouseLeave = useCallback(() => {
-    setCrosshair(null);
+    crosshairRef.current = null;
   }, []);
 
   const onWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
     const delta = e.deltaY > 0 ? 4 : -4;
-    setVisibleCount((prev) => Math.max(10, Math.min(data.length, prev + delta)));
-  }, [data.length]);
+    visibleCountRef.current = Math.max(10, Math.min(data.length, visibleCountRef.current + delta));
+    drawCanvas();
+  }, [data.length, drawCanvas]);
 
   const onMouseDown = useCallback((e: React.MouseEvent) => {
-    dragRef.current = { startX: e.clientX, startIdx: visibleStart };
-  }, [visibleStart]);
+    dragRef.current = { startX: e.clientX, startIdx: visibleStartRef.current };
+  }, []);
 
   const onMouseUp = useCallback(() => {
     dragRef.current = null;
@@ -245,17 +304,18 @@ export function CandlestickChart({
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return;
     const chartW = rect.width - LEFT - RIGHT;
-    const candleW = Math.max(2, Math.floor(chartW / visibleCount) - 1);
+    const candleW = Math.max(2, Math.floor(chartW / visibleCountRef.current) - 1);
     const gap = candleW + 1;
     const dx = dragRef.current.startX - e.clientX;
     const shift = Math.round(dx / gap);
-    const newStart = Math.max(0, Math.min(data.length - visibleCount, dragRef.current.startIdx + shift));
-    if (newStart !== visibleStart) {
-      setVisibleStart(newStart);
+    const newStart = Math.max(0, Math.min(data.length - visibleCountRef.current, dragRef.current.startIdx + shift));
+    if (newStart !== visibleStartRef.current) {
+      visibleStartRef.current = newStart;
       dragRef.current.startIdx = newStart;
       dragRef.current.startX = e.clientX;
+      drawCanvas();
     }
-  }, [data.length, visibleCount, visibleStart]);
+  }, [data.length, drawCanvas]);
 
   return (
     <div
@@ -269,6 +329,7 @@ export function CandlestickChart({
       onWheel={onWheel}
     >
       <canvas ref={canvasRef} className="block w-full" />
+      <canvas ref={overlayRef} className="pointer-events-none absolute inset-0 block" />
       <div
         ref={tooltipRef}
         className="pointer-events-none absolute z-10 hidden rounded border px-2.5 py-1.5"
@@ -276,4 +337,11 @@ export function CandlestickChart({
       />
     </div>
   );
+}
+
+function fmtPrice(n: number) {
+  if (n >= 1000) return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (n >= 1) return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+  if (n >= 0.01) return n.toFixed(4);
+  return n.toFixed(6);
 }
