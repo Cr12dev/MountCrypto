@@ -1,7 +1,7 @@
 import YahooFinance from "yahoo-finance2";
 import type { ChangeMap } from "./timeframes";
 
-let _yh: YahooFinance | null = null;
+let _yh: typeof YahooFinance | null = null;
 function getYahooFinance() {
   if (!_yh) _yh = new YahooFinance();
   return _yh;
