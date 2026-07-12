@@ -53,11 +53,14 @@ export function CommoditiesTable() {
             render: (c: CommodityQuote) => <span className="font-mono text-xs text-text-primary">${c.price.toFixed(c.price < 10 ? 3 : 2)}</span>,
           },
           {
-            key: "unit", label: "Unit",
+            key: "unit", label: "Unit", hide: "md" as const,
             render: (c: CommodityQuote) => <span className="font-mono text-xs text-text-secondary">{c.unit}</span>,
           },
-          ...CHANGE_TIMEFRAMES.map((tf) => ({
+          ...CHANGE_TIMEFRAMES.map((tf, i) => ({
             key: `change_${tf.key}`, label: tf.label,
+            hide: i === 2 ? undefined
+              : i === 0 || i === 3 ? "md" as const
+              : "lg" as const,
             render: (c: CommodityQuote) => <ChangeCell value={c.changes[tf.key]} />,
           })),
         ]}

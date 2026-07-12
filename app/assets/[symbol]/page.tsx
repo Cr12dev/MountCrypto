@@ -3,7 +3,7 @@ import { getStockQuote, getForexQuote, getCommodityQuote } from "@/lib/api/yahoo
 import { notFound } from "next/navigation";
 import { AssetHeader } from "@/components/assets/AssetHeader";
 import { AssetStats } from "@/components/assets/AssetStats";
-import { PriceChart } from "@/components/charts/PriceChart";
+import { AssetChartSection } from "@/components/charts/AssetChartSection";
 import { DemoAssetDetail } from "@/components/assets/DemoAssetDetail";
 import Link from "next/link";
 
@@ -63,7 +63,7 @@ export default async function AssetDetailPage({
           symbol={commodity.symbol}
           price={commodity.price}
           change={commodity.changePercent}
-          type={commodity.unit}
+          type="Commodity"
         />
       </div>
     );
@@ -83,7 +83,7 @@ export default async function AssetDetailPage({
       </Link>
       <AssetHeader coin={coin} />
       <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_240px]">
-        <PriceChart coinId={coinId} />
+        <AssetChartSection symbol={coin.symbol.toUpperCase()} assetType="crypto" />
         <AssetStats coin={coin} />
       </div>
       {coin.description.en && (

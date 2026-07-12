@@ -47,7 +47,12 @@ export async function GET(request: Request) {
     "EUR/GBP": "EURGBP=X",
   };
 
-  const yahooSymbol = YAHOO_SYMBOLS[symbol] || forexPairs[symbol] || symbol + "=X";
+  let yahooSymbol: string;
+  if (type === "crypto") {
+    yahooSymbol = YAHOO_SYMBOLS[symbol] || `${symbol}-USD`;
+  } else {
+    yahooSymbol = YAHOO_SYMBOLS[symbol] || forexPairs[symbol] || `${symbol}=X`;
+  }
 
   try {
     const bars = await fetchOhlc(yahooSymbol, type, days);

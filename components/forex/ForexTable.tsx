@@ -63,8 +63,11 @@ export function ForexTable() {
               return <span className="font-mono text-xs text-text-secondary">{spread.toFixed(spread < 0.01 ? 5 : 4)}</span>;
             },
           },
-          ...CHANGE_TIMEFRAMES.map((tf) => ({
+          ...CHANGE_TIMEFRAMES.map((tf, i) => ({
             key: `change_${tf.key}`, label: tf.label,
+            hide: i === 2 ? undefined
+              : i === 0 || i === 3 ? "md" as const
+              : "lg" as const,
             render: (p: ForexQuote) => <ChangeCell value={p.changes[tf.key]} />,
           })),
         ]}
