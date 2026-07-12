@@ -87,10 +87,10 @@ App web para visualizar mercados financieros: bolsa (NASDAQ, IBEX35...), criptom
 
 | API              | Coverage                    | Límites                          |
 | ---------------- | --------------------------- | -------------------------------- |
+| **Yahoo Finance** | Stocks, indices, forex, commodities, news | Sin API key, ~15 min delay (free) |
 | **CoinGecko**    | Criptomonedas               | 10-30 req/min (free)            |
-| **Demo data**    | Stocks, forex, commodities  | Sin límite (seeded random)      |
 
-**Estrategia**: Servidor Next.js actúa como proxy para ocultar API keys (Route Handlers). ISR (60s revalidate) para crypto real. Los stocks/forex/commodities usan datos demo con variación pseudoaleatoria cada 2 min.
+**Estrategia**: Servidor Next.js actúa como proxy (Route Handlers). Yahoo Finance sin API key, ~15 min delayed. CoinGecko con ISR 60s. Cache en memoria (60s TTL) en `fetchChanges` para reducir llamadas.
 
 ---
 
@@ -124,9 +124,28 @@ App web para visualizar mercados financieros: bolsa (NASDAQ, IBEX35...), criptom
 - [x] Alertas de precio (CRUD con Supabase + página dedicada)
 
 ### Fase 3 — Tiempo real y social
-- [ ] Precios en tiempo real (WebSocket / polling cada 5-10s)
-- [ ] Noticias financieras integradas
-- [ ] Compartir watchlists / portfolios
+- [x] Precios en tiempo real (polling cada 10s via `usePolling` hook)
+- [x] Noticias financieras integradas (Yahoo Finance + scraping BBC/NYT/Bild/Economist)
+- [x] Compartir watchlists / portfolios (share token + páginas públicas)
+
+### Fase 4 — Algoritmia y análisis técnico
+- [ ] Screener de mercado (filtrar por cambio %, volumen, capitalización, sector)
+- [ ] Indicadores técnicos en el gráfico de velas (RSI, MACD, SMA, EMA, Bandas de Bollinger)
+- [ ] Scanner de patrones de velas (envolvente, doji, martillo, estrella fugaz)
+- [ ] Alertas avanzadas (activadas por indicadores técnicos, no solo precio)
+- [ ] Comparativa de activos (superponer múltiples símbolos en el mismo gráfico)
+- [ ] Watchlist sincronizada con el gráfico (click en símbolo → abre detalle)
+- [ ] Heatmap del mercado por sector / capitalización
+
+### Fase 5 — Social, mobile y expansión
+- [ ] Comentarios y discusión por activo (comunidad)
+- [ ] Rankings públicos de portfolios (P&L, sharpe ratio, drawdown)
+- [ ] Notificaciones push (Web Push API + Supabase Realtime)
+- [ ] PWA (manifest + service worker + offline fallback)
+- [ ] Modo oscuro / claro persistente en preferencias
+- [ ] Exportación de informes PDF (P&L mensual, cartera, histórico)
+- [ ] API pública con rate limiting para terceros (App Router + API keys)
+- [ ] Integración con brokers (Alpaca, Interactive Brokers — paper trading)
 
 ---
 

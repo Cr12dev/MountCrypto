@@ -20,7 +20,7 @@ export function MarketIndices() {
   if (!indices.length) return null;
 
   return (
-    <div className="grid grid-cols-3 gap-px overflow-hidden rounded-lg border border-border bg-border">
+    <div className="grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-3">
       {indices.map((idx) => {
         const up = idx.change >= 0;
         return (
