@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import Image from "next/image";
 import { Sparkline } from "@/components/crypto/Sparkline";
 import { CandlestickChart } from "@/components/charts/CandlestickChart";
@@ -40,12 +40,22 @@ function cn(up: boolean) {
   return up ? "text-green" : "text-red";
 }
 
-export function BentoOverview() {
-  const [indices, setIndices] = useState<IndexQuote[]>([]);
-  const [stocks, setStocks] = useState<StockQuote[]>([]);
+export function BentoOverview({
+  initialIndices = [],
+  initialStocks = [],
+  initialForex = [],
+  initialCommodities = [],
+}: {
+  initialIndices?: IndexQuote[];
+  initialStocks?: StockQuote[];
+  initialForex?: ForexQuote[];
+  initialCommodities?: CommodityQuote[];
+}) {
+  const [indices, setIndices] = useState<IndexQuote[]>(initialIndices);
+  const [stocks, setStocks] = useState<StockQuote[]>(initialStocks);
   const [coins, setCoins] = useState<CoinMarket[]>([]);
-  const [forex, setForex] = useState<ForexQuote[]>([]);
-  const [commodities, setCommodities] = useState<CommodityQuote[]>([]);
+  const [forex, setForex] = useState<ForexQuote[]>(initialForex);
+  const [commodities, setCommodities] = useState<CommodityQuote[]>(initialCommodities);
   const [chartData, setChartData] = useState<OhlcBar[]>([]);
   const [chartAsset, setChartAsset] = useState<ChartAsset>(chartAssets[0]);
   const [chartDays, setChartDays] = useState("1");
@@ -110,9 +120,9 @@ export function BentoOverview() {
     return () => { controller.abort(); };
   }, [chartAsset, chartDays, fetchOhlc]);
 
-  const topMovers = [...stocks].sort((a, b) => Math.abs(b.changePercent) - Math.abs(a.changePercent));
-  const breadthGreen = stocks.filter((s) => s.changePercent >= 0).length;
-  const breadthRed = stocks.filter((s) => s.changePercent < 0).length;
+  const topMovers = useMemo(() => [...stocks].sort((a, b) => Math.abs(b.changePercent) - Math.abs(a.changePercent)), [stocks]);
+  const breadthGreen = useMemo(() => stocks.filter((s) => s.changePercent >= 0).length, [stocks]);
+  const breadthRed = useMemo(() => stocks.filter((s) => s.changePercent < 0).length, [stocks]);
 
   const isEmpty = !indices.length && !coins.length;
 
