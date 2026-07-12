@@ -46,7 +46,7 @@ export default function NewsPage() {
       })
       .catch(() => {});
 
-    const fetchScraped = fetch("/api/news/scraped")
+    const fetchScraped = fetch("/api/news/scraped?sources=bbc,nytimes,bild,economist&timeout=45")
         .then((r) => r.json())
         .then((data: any) => {
           const list: any[] = data?.articles ?? data;
