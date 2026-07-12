@@ -1,10 +1,16 @@
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import asyncio
 import logging
+from datetime import datetime, timedelta, timezone
+import numpy as np
 
 from models import Article, Source, ScrapeResponse, ErrorResponse
+from predictor.schemas import CoinPrediction, PredictionPoint, FactorWeight, SentimentData, ModelMetrics, SUPPORTED_COINS, COIN_IDS
+from predictor.data import build_features, get_current_price
+from predictor.sentiment import analyze_sentiment
+from predictor.ensemble import predict_price
 from scrapers.bbc import BBCScraper
 from scrapers.wsj import WSJScraper
 from scrapers.nytimes import NYTScraper
@@ -121,6 +127,124 @@ async def health():
     async with store_lock:
         count = len(store)
     return {"status": "ok", "articles_in_store": count}
+
+
+@app.get("/predict/coins")
+async def list_coins():
+    return {
+        "coins": [
+            {"id": cid, "symbol": info["symbol"], "name": info["name"]}
+            for cid, info in SUPPORTED_COINS.items()
+        ]
+    }
+
+
+@app.get("/predict/factors")
+async def prediction_factors():
+    sentiment = await analyze_sentiment(keywords=["crypto", "bitcoin", "blockchain"])
+    return {
+        "sentiment": sentiment,
+        "models_used": [
+            "linear_regression",
+            "polynomial (degree 2)",
+            "weighted_moving_average",
+            "momentum_regression",
+            "seasonal_decomposition (7-day cycle)",
+        ],
+        "data_sources": {
+            "price_data": "CoinGecko API (365 days of OHLC + market chart)",
+            "market_sentiment": "Fear & Greed Index (alternative.me)",
+            "news": "Scraping service articles filtered for crypto keywords",
+        },
+    }
+
+
+@app.get("/predict/{coin_id}", response_model=CoinPrediction)
+async def predict_coin(
+    coin_id: str,
+    days: int = Query(30, ge=7, le=365, description="Forecast horizon in days"),
+):
+    if coin_id not in SUPPORTED_COINS:
+        raise HTTPException(status_code=404, detail=f"Unsupported coin '{coin_id}'. Use GET /predict/coins to see supported coins.")
+
+    coin_info = SUPPORTED_COINS[coin_id]
+
+    try:
+        features = await build_features(coin_id, days=365)
+        sentiment = await analyze_sentiment(keywords=coin_info["keywords"])
+        current_price = float(features["close_prices"][-1])
+
+        result = await predict_price(days, features, sentiment["score"])
+
+        dates = [
+            (datetime.now(timezone.utc) + timedelta(days=i + 1)).strftime("%Y-%m-%d")
+            for i in range(days)
+        ]
+
+        forecast = [
+            PredictionPoint(
+                date=dates[i],
+                predicted_price=round(float(result["ensemble"][i]), 2),
+                upper_bound=round(float(result["upper"][i]), 2),
+                lower_bound=round(float(result["lower"][i]), 2),
+            )
+            for i in range(days)
+        ]
+
+        price_vol = float(np.std(features["close_prices"][-90:]) / np.mean(features["close_prices"][-90:])) if len(features["close_prices"]) >= 90 else 0.5
+        if price_vol < 0.15:
+            confidence = "high"
+        elif price_vol < 0.30:
+            confidence = "medium"
+        else:
+            confidence = "low"
+
+        factors = [
+            FactorWeight(name="Price Momentum", weight=0.25, impact="positive" if features.get("momentum", np.array([0]))[-1] > 0 else "negative"),
+            FactorWeight(name="Market Volatility", weight=0.20, impact="negative" if price_vol > 0.25 else "neutral"),
+            FactorWeight(name="News Sentiment", weight=0.20, impact=sentiment["label"]),
+            FactorWeight(name="Fear & Greed Index", weight=0.15, impact="positive" if sentiment.get("fear_greed_value", 50) > 50 else "negative"),
+            FactorWeight(name="Trend Strength (SMA)",
+                        weight=0.10,
+                        impact="positive" if features["close_prices"][-1] > features["sma_99"][-1] else "negative"),
+            FactorWeight(name="Volume Trend", weight=0.10, impact="neutral"),
+        ]
+
+        sentiment_data = SentimentData(
+            score=sentiment["score"],
+            label=sentiment["label"],
+            article_count=sentiment["article_count"],
+            recent_trend=sentiment.get("recent_trend", "neutral"),
+        )
+
+        model_metrics = [
+            ModelMetrics(
+                model=m["model"],
+                mae=m["mae"],
+                rmse=m["rmse"],
+                weight=m["weight"],
+            )
+            for m in result["metrics"]
+        ]
+
+        return CoinPrediction(
+            coin_id=coin_id,
+            symbol=coin_info["symbol"],
+            name=coin_info["name"],
+            current_price=round(current_price, 2),
+            current_date=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+            forecast=forecast,
+            factors=factors,
+            sentiment=sentiment_data,
+            confidence=confidence,
+            model_metrics=model_metrics,
+            prediction_days=days,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.exception(f"Prediction failed for {coin_id}")
+        raise HTTPException(status_code=500, detail=f"Prediction failed for {coin_id}: {e}")
 
 
 def _resolve_sources(sources: str | None) -> list[Source]:
