@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import type { OhlcBar } from "@/lib/api/yahoo";
 
 const COLORS = {
@@ -20,6 +20,17 @@ const BOTTOM = 24;
 const TOP = 8;
 const LEFT = 4;
 
+interface TooltipData {
+  x: number;
+  y: number;
+  time: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  isUp: boolean;
+}
+
 export function CandlestickChart({
   data,
   height = 320,
@@ -30,11 +41,18 @@ export function CandlestickChart({
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
-  const tooltipRef = useRef<HTMLDivElement>(null);
   const crosshairRef = useRef<{ x: number; y: number } | null>(null);
   const dragRef = useRef<{ startX: number; startIdx: number } | null>(null);
   const visibleStartRef = useRef(0);
   const visibleCountRef = useRef(40);
+  const [tooltip, setTooltip] = useState<TooltipData | null>(null);
+
+  function fmtPrice(n: number) {
+    if (n >= 1000) return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (n >= 1) return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+    if (n >= 0.01) return n.toFixed(4);
+    return n.toFixed(6);
+  }
 
   const drawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
@@ -130,13 +148,6 @@ export function CandlestickChart({
 
     ctx.restore();
 
-    function fmtPrice(n: number) {
-      if (n >= 1000) return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      if (n >= 1) return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 });
-      if (n >= 0.01) return n.toFixed(4);
-      return n.toFixed(6);
-    }
-
     ctx.textAlign = "right";
     ctx.textBaseline = "middle";
     ctx.font = "10px JetBrains Mono, monospace";
@@ -207,8 +218,6 @@ export function CandlestickChart({
 
     const crosshair = crosshairRef.current;
     if (!crosshair || crosshair.x < LEFT || crosshair.x > LEFT + chartW || crosshair.y < TOP || crosshair.y > TOP + chartH) {
-      const tooltip = tooltipRef.current;
-      if (tooltip) tooltip.style.display = "none";
       return;
     }
 
@@ -229,32 +238,21 @@ export function CandlestickChart({
     const c = slice[idx];
     if (!c) return;
 
-    const isUp = c.close >= c.open;
     const d = new Date(c.time * 1000);
-    const tooltip = tooltipRef.current;
-    if (!tooltip) return;
+    const isUp = c.close >= c.open;
+    const tx = Math.max(4, Math.min(w - 4 - 160, xVal(idx) - 80));
+    const ty = crosshair.y - 60 < 4 ? crosshair.y + 12 : crosshair.y - 60;
 
-    tooltip.style.display = "block";
-    tooltip.innerHTML = `
-      <div style="font:10px JetBrains Mono,monospace;color:${COLORS.text}">${d.toUTCString().slice(5, 22)}</div>
-      <div style="font:11px JetBrains Mono,monospace;color:${COLORS.textPrimary};margin-top:2px">
-        O: <span style="color:${isUp ? COLORS.green : COLORS.red}">${fmtPrice(c.open)}</span>
-        H: <span style="color:${isUp ? COLORS.green : COLORS.red}">${fmtPrice(c.high)}</span>
-      </div>
-      <div style="font:11px JetBrains Mono,monospace;color:${COLORS.textPrimary}">
-        L: <span style="color:${isUp ? COLORS.green : COLORS.red}">${fmtPrice(c.low)}</span>
-        C: <span style="color:${isUp ? COLORS.green : COLORS.red}">${fmtPrice(c.close)}</span>
-      </div>
-    `;
-    const tooltipW = tooltip.offsetWidth;
-    const tooltipH = tooltip.offsetHeight;
-    let tx = xVal(idx) - tooltipW / 2;
-    if (tx < 4) tx = 4;
-    if (tx + tooltipW > w - 4) tx = w - tooltipW - 4;
-    let ty = crosshair.y - tooltipH - 12;
-    if (ty < 4) ty = crosshair.y + 12;
-    tooltip.style.left = `${tx}px`;
-    tooltip.style.top = `${ty}px`;
+    setTooltip({
+      x: tx,
+      y: ty,
+      time: d.toUTCString().slice(5, 22),
+      open: c.open,
+      high: c.high,
+      low: c.low,
+      close: c.close,
+      isUp,
+    });
   }, [data, height]);
 
   useEffect(() => {
@@ -282,6 +280,7 @@ export function CandlestickChart({
 
   const onMouseLeave = useCallback(() => {
     crosshairRef.current = null;
+    setTooltip(null);
   }, []);
 
   const onWheel = useCallback((e: React.WheelEvent) => {
@@ -330,18 +329,29 @@ export function CandlestickChart({
     >
       <canvas ref={canvasRef} className="block w-full" />
       <canvas ref={overlayRef} className="pointer-events-none absolute inset-0 block" />
-      <div
-        ref={tooltipRef}
-        className="pointer-events-none absolute z-10 hidden rounded border px-2.5 py-1.5"
-        style={{ background: COLORS.tooltipBg, borderColor: COLORS.tooltipBorder }}
-      />
+      {tooltip && (
+        <div
+          className="pointer-events-none absolute z-10 rounded border px-2.5 py-1.5"
+          style={{
+            left: tooltip.x,
+            top: tooltip.y,
+            background: COLORS.tooltipBg,
+            borderColor: COLORS.tooltipBorder,
+          }}
+        >
+          <div style={{ font: "10px JetBrains Mono, monospace", color: COLORS.text }}>
+            {tooltip.time}
+          </div>
+          <div style={{ font: "11px JetBrains Mono, monospace", color: COLORS.textPrimary, marginTop: 2 }}>
+            O: <span style={{ color: tooltip.isUp ? COLORS.green : COLORS.red }}>{fmtPrice(tooltip.open)}</span>
+            {" "}H: <span style={{ color: tooltip.isUp ? COLORS.green : COLORS.red }}>{fmtPrice(tooltip.high)}</span>
+          </div>
+          <div style={{ font: "11px JetBrains Mono, monospace", color: COLORS.textPrimary }}>
+            L: <span style={{ color: tooltip.isUp ? COLORS.green : COLORS.red }}>{fmtPrice(tooltip.low)}</span>
+            {" "}C: <span style={{ color: tooltip.isUp ? COLORS.green : COLORS.red }}>{fmtPrice(tooltip.close)}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
-}
-
-function fmtPrice(n: number) {
-  if (n >= 1000) return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  if (n >= 1) return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 });
-  if (n >= 0.01) return n.toFixed(4);
-  return n.toFixed(6);
 }

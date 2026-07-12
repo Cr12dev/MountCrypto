@@ -1,7 +1,11 @@
 import YahooFinance from "yahoo-finance2";
 import type { NewsArticle } from "@/lib/types/news";
 
-const yahooFinance = new YahooFinance();
+let _yahooFinance: InstanceType<typeof YahooFinance> | null = null;
+function getYahooFinance() {
+  if (!_yahooFinance) _yahooFinance = new YahooFinance();
+  return _yahooFinance;
+}
 
 const NEWS_QUERIES = [
   "stock market today",
@@ -19,7 +23,7 @@ export async function fetchNews(category?: string): Promise<NewsArticle[]> {
 
   const results = await Promise.allSettled(
     queries.map((q) =>
-      yahooFinance.search(q, {
+      getYahooFinance().search(q, {
         quotesCount: 0,
         newsCount: 15,
       } as any),

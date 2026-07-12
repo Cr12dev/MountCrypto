@@ -6,16 +6,19 @@ import { useEffect, useState } from "react";
 import { GlobalSearch } from "@/components/ui/GlobalSearch";
 import { useNews } from "@/components/news/NewsContext";
 
+const supabase = createClient();
+
 export function Navbar() {
   const [email, setEmail] = useState<string | null>(null);
   const router = useRouter();
   const { isNewsOpen, toggleNews } = useNews();
 
   useEffect(() => {
-    const supabase = createClient();
+    let ignore = false;
     supabase.auth.getUser().then(({ data }) => {
-      setEmail(data.user?.email ?? null);
+      if (!ignore) setEmail(data.user?.email ?? null);
     });
+    return () => { ignore = true; };
   }, []);
 
   async function handleSignOut() {

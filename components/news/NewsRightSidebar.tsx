@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useNews } from "./NewsContext";
 import type { NewsArticle } from "@/lib/types/news";
@@ -22,16 +22,22 @@ export function NewsRightSidebar() {
   const [articles, setArticles] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const abortRef = useRef<AbortController | null>(null);
+
   useEffect(() => {
     if (!isNewsOpen) return;
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     setLoading(true);
-    fetch("/api/news")
+    fetch("/api/news", { signal: controller.signal })
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data)) setArticles(data.slice(0, 8));
         setLoading(false);
       })
       .catch(() => setLoading(false));
+    return () => controller.abort();
   }, [isNewsOpen]);
 
   if (!isNewsOpen) {
