@@ -1,7 +1,7 @@
 import YahooFinance from "yahoo-finance2";
 import type { NewsArticle } from "@/lib/types/news";
 
-let _yahooFinance: typeof YahooFinance | null = null;
+let _yahooFinance: InstanceType<typeof YahooFinance> | null = null;
 function getYahooFinance() {
   if (!_yahooFinance) _yahooFinance = new YahooFinance();
   return _yahooFinance;
