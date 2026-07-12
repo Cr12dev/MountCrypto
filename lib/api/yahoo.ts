@@ -1,7 +1,11 @@
 import YahooFinance from "yahoo-finance2";
 import type { ChangeMap } from "./timeframes";
 
-const yahooFinance = new YahooFinance();
+let _yh: YahooFinance | null = null;
+function getYahooFinance() {
+  if (!_yh) _yh = new YahooFinance();
+  return _yh;
+}
 
 const CACHE_TTL = 60_000;
 const changeCache = new Map<string, { data: ChangeMap; at: number }>();
@@ -129,7 +133,7 @@ async function fetchChanges(symbol: string): Promise<ChangeMap> {
   const changes: ChangeMap = {};
 
   try {
-    const daily = (await yahooFinance.chart(symbol, {
+    const daily = (await getYahooFinance().chart(symbol, {
       period1: daysAgo(400),
       interval: "1d",
       return: "array",
@@ -171,7 +175,7 @@ async function fetchChanges(symbol: string): Promise<ChangeMap> {
 }
 
 export async function fetchIndexQuotes(): Promise<IndexQuote[]> {
-  const result = await yahooFinance.quote(INDEX_SYMBOLS);
+  const result = await getYahooFinance().quote(INDEX_SYMBOLS);
   const quotes = Array.isArray(result) ? result : [result];
 
   const mapped = quotes.map((q: Record<string, unknown>) => ({
@@ -197,7 +201,7 @@ export async function fetchIndexQuotes(): Promise<IndexQuote[]> {
 }
 
 export async function fetchStockQuotes(): Promise<StockQuote[]> {
-  const result = await yahooFinance.quote(STOCK_SYMBOLS);
+  const result = await getYahooFinance().quote(STOCK_SYMBOLS);
   const quotes = Array.isArray(result) ? result : [result];
 
   const mapped = quotes.map((q: Record<string, unknown>) => ({
@@ -225,7 +229,7 @@ export async function fetchStockQuotes(): Promise<StockQuote[]> {
 }
 
 export async function fetchForexQuotes(): Promise<ForexQuote[]> {
-  const result = await yahooFinance.quote(FOREX_SYMBOLS);
+  const result = await getYahooFinance().quote(FOREX_SYMBOLS);
   const quotes = Array.isArray(result) ? result : [result];
 
   const mapped = quotes.map((q: Record<string, unknown>) => {
@@ -260,7 +264,7 @@ export async function fetchForexQuotes(): Promise<ForexQuote[]> {
 }
 
 export async function fetchCommodityQuotes(): Promise<CommodityQuote[]> {
-  const result = await yahooFinance.quote(COMMODITY_SYMBOLS);
+  const result = await getYahooFinance().quote(COMMODITY_SYMBOLS);
   const quotes = Array.isArray(result) ? result : [result];
 
   const mapped = quotes.map((q: Record<string, unknown>) => {
@@ -295,7 +299,7 @@ export async function fetchCommodityQuotes(): Promise<CommodityQuote[]> {
 
 export async function getStockQuote(symbol: string): Promise<StockQuote | null> {
   try {
-    const result = await yahooFinance.quote([symbol]);
+    const result = await getYahooFinance().quote([symbol]);
     const q = (Array.isArray(result) ? result : [result])[0] as Record<string, unknown>;
     return {
       symbol: (q.symbol ?? "") as string,
@@ -320,7 +324,7 @@ export async function getForexQuote(pair: string): Promise<ForexQuote | null> {
   if (!yahooSymbol) return null;
 
   try {
-    const result = await yahooFinance.quote([yahooSymbol]);
+    const result = await getYahooFinance().quote([yahooSymbol]);
     const q = (Array.isArray(result) ? result : [result])[0] as Record<string, unknown>;
     const price = (q.regularMarketPrice ?? 0) as number;
     const spread = price * 0.00015;
@@ -345,7 +349,7 @@ export async function getCommodityQuote(symbol: string): Promise<CommodityQuote 
   if (!yahooSymbol) return null;
 
   try {
-    const result = await yahooFinance.quote([yahooSymbol]);
+    const result = await getYahooFinance().quote([yahooSymbol]);
     const q = (Array.isArray(result) ? result : [result])[0] as Record<string, unknown>;
     const sym = (q.symbol ?? "") as string;
     return {
@@ -366,7 +370,7 @@ export async function fetchOhlc(symbol: string, _type: string, days: string): Pr
   const numDays = parseInt(days) || 1;
   const interval = numDays <= 3 ? "1h" : "1d";
 
-  const result = (await yahooFinance.chart(symbol, {
+  const result = (await getYahooFinance().chart(symbol, {
     period1: daysAgo(numDays),
     interval,
     return: "array",
