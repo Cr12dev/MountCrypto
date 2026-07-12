@@ -63,13 +63,15 @@ export function BentoOverview({
   const [loadSlow, setLoadSlow] = useState(false);
 
   const fetchAll = useCallback(async () => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
     try {
       const [i, s, c, f, cm] = await Promise.all([
-        fetch("/api/stocks?type=indices", { signal: AbortSignal.timeout(15000) }).then((r) => r.json()),
-        fetch("/api/stocks?type=stocks", { signal: AbortSignal.timeout(15000) }).then((r) => r.json()),
-        fetch("/api/crypto?per_page=3", { signal: AbortSignal.timeout(15000) }).then((r) => r.json()),
-        fetch("/api/forex", { signal: AbortSignal.timeout(15000) }).then((r) => r.json()),
-        fetch("/api/commodities", { signal: AbortSignal.timeout(15000) }).then((r) => r.json()),
+        fetch("/api/stocks?type=indices", { signal: controller.signal }).then((r) => r.json()),
+        fetch("/api/stocks?type=stocks", { signal: controller.signal }).then((r) => r.json()),
+        fetch("/api/crypto?per_page=3", { signal: controller.signal }).then((r) => r.json()),
+        fetch("/api/forex", { signal: controller.signal }).then((r) => r.json()),
+        fetch("/api/commodities", { signal: controller.signal }).then((r) => r.json()),
       ]);
       if (Array.isArray(i)) setIndices(i);
       if (Array.isArray(s)) setStocks(s);
@@ -79,6 +81,8 @@ export function BentoOverview({
       setLoadSlow(false);
     } catch (err) {
       console.error("BentoOverview fetchAll failed:", err);
+    } finally {
+      clearTimeout(timeout);
     }
   }, []);
 

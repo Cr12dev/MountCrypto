@@ -366,12 +366,14 @@ export async function getCommodityQuote(symbol: string): Promise<CommodityQuote 
   }
 }
 
-export async function fetchOhlc(symbol: string, _type: string, days: string): Promise<OhlcBar[]> {
+export async function fetchOhlc(symbol: string, type: string, days: string): Promise<OhlcBar[]> {
   const numDays = parseInt(days) || 1;
-  const interval = numDays <= 3 ? "1h" : "1d";
+  const is24x7 = type === "crypto";
+  const interval = numDays <= 3 && is24x7 ? "1h" : "1d";
+  const periodDays = interval === "1h" ? numDays : Math.max(numDays, 5);
 
   const result = (await getYahooFinance().chart(symbol, {
-    period1: daysAgo(numDays),
+    period1: daysAgo(periodDays),
     interval,
     return: "array",
   })) as unknown as { quotes: ChartQuote[] };
