@@ -12,7 +12,7 @@ export async function GET(
 
   try {
     const res = await fetch(`${SCRAPING_API}/predict/${coinId}?days=${days}`, {
-      signal: AbortSignal.timeout(30000),
+      signal: AbortSignal.timeout(60000),
     });
 
     if (!res.ok) {
