@@ -1,4 +1,6 @@
 import logging
+import asyncio
+import time
 from datetime import datetime, timezone
 
 import numpy as np
@@ -8,52 +10,107 @@ logger = logging.getLogger(__name__)
 
 COINGECKO_BASE = "https://api.coingecko.com/api/v3"
 
-PRICE_CACHE: dict[str, tuple[list[float], float]] = {}
+MAX_RETRIES = 4
+INITIAL_BACKOFF = 2.0
+
+_cache: dict[str, tuple[any, float]] = {}
 CACHE_TTL = 300
 
+_client: httpx.AsyncClient | None = None
+_last_call = 0.0
+_rate_lock = asyncio.Lock()
 
-async def fetch_coin_ohlc(coin_id: str, days: int = 365) -> list[list[float]]:
-    cache_key = f"{coin_id}_ohlc_{days}"
-    now = datetime.now(timezone.utc).timestamp()
-    if cache_key in PRICE_CACHE:
-        data, ts = PRICE_CACHE[cache_key]
-        if now - ts < CACHE_TTL:
-            return data
 
-    url = f"{COINGECKO_BASE}/coins/{coin_id}/ohlc?vs_currency=usd&days={days}"
-    async with httpx.AsyncClient(timeout=30) as client:
+def _get_client() -> httpx.AsyncClient:
+    global _client
+    if _client is None:
+        _client = httpx.AsyncClient(timeout=30)
+    return _client
+
+
+async def _throttle():
+    global _last_call
+    async with _rate_lock:
+        now = time.monotonic()
+        since = now - _last_call
+        min_gap = 2.5
+        if since < min_gap:
+            await asyncio.sleep(min_gap - since)
+        _last_call = time.monotonic()
+
+
+async def _rate_limited_fetch(url: str) -> dict | list:
+    client = _get_client()
+    for attempt in range(MAX_RETRIES):
+        await _throttle()
         resp = await client.get(url)
+        if resp.status_code == 429:
+            wait = INITIAL_BACKOFF * (2 ** attempt)
+            logger.warning(f"429 on {url.split('?')[0].rsplit('/', 1)[-1]} — retrying in {wait}s (attempt {attempt + 1})")
+            await asyncio.sleep(wait)
+            continue
         resp.raise_for_status()
-        data = resp.json()
+        return resp.json()
+    raise httpx.HTTPStatusError(f"Still 429 after {MAX_RETRIES} retries", request=None, response=resp)
 
-    PRICE_CACHE[cache_key] = (data, now)
+
+def _cached(key: str) -> any:
+    if key in _cache:
+        data, ts = _cache[key]
+        if time.time() - ts < CACHE_TTL:
+            return data
+    return None
+
+
+def _set_cache(key: str, data: any):
+    _cache[key] = (data, time.time())
+
+
+async def fetch_coin_market_chart(coin_id: str, days: int = 90) -> dict:
+    cache_key = f"chart_{coin_id}_{days}"
+    cached = _cached(cache_key)
+    if cached:
+        return cached
+
+    url = f"{COINGECKO_BASE}/coins/{coin_id}/market_chart?vs_currency=usd&days={days}"
+    data = await _rate_limited_fetch(url)
+
+    _set_cache(cache_key, data)
     return data
 
 
-async def fetch_coin_market_chart(coin_id: str, days: int = 365) -> dict:
-    url = f"{COINGECKO_BASE}/coins/{coin_id}/market_chart?vs_currency=usd&days={days}"
-    async with httpx.AsyncClient(timeout=30) as client:
-        resp = await client.get(url)
-        resp.raise_for_status()
-        return resp.json()
-
-
 async def fetch_coin_detail(coin_id: str) -> dict | None:
+    cache_key = f"detail_{coin_id}"
+    cached = _cached(cache_key)
+    if cached is not None:
+        return cached
+
     url = f"{COINGECKO_BASE}/coins/{coin_id}?localization=false&tickers=false&community_data=false&developer_data=false"
-    async with httpx.AsyncClient(timeout=15) as client:
-        resp = await client.get(url)
-        if resp.status_code != 200:
-            return None
-        return resp.json()
+    try:
+        data = await _rate_limited_fetch(url)
+        _set_cache(cache_key, data)
+        return data
+    except Exception as e:
+        logger.warning(f"Failed to fetch detail for {coin_id}: {e}")
+        _set_cache(cache_key, None)
+        return None
 
 
 async def fetch_global_data() -> dict | None:
+    cache_key = "global"
+    cached = _cached(cache_key)
+    if cached is not None:
+        return cached
+
     url = f"{COINGECKO_BASE}/global"
-    async with httpx.AsyncClient(timeout=15) as client:
-        resp = await client.get(url)
-        if resp.status_code != 200:
-            return None
-        return resp.json()
+    try:
+        data = await _rate_limited_fetch(url)
+        _set_cache(cache_key, data)
+        return data
+    except Exception as e:
+        logger.warning(f"Failed to fetch global data: {e}")
+        _set_cache(cache_key, None)
+        return None
 
 
 def compute_rsi(prices: np.ndarray, period: int = 14) -> np.ndarray:
@@ -133,14 +190,11 @@ def compute_momentum(prices: np.ndarray) -> np.ndarray:
     return result
 
 
-async def build_features(coin_id: str, days: int = 365) -> dict:
-    ohlc = await fetch_coin_ohlc(coin_id, min(days, 365))
-    market_chart = await fetch_coin_market_chart(coin_id, min(days, 365))
+async def build_features(coin_id: str, days: int = 90) -> dict:
+    chart_days = min(max(days, 30), 365)
+    market_chart = await fetch_coin_market_chart(coin_id, chart_days)
 
     raw_prices = market_chart.get("prices", [])
-    if not raw_prices and ohlc:
-        raw_prices = [[o[0], o[4]] for o in ohlc]
-
     if not raw_prices:
         raise ValueError(f"No price data available for {coin_id}")
 
@@ -158,17 +212,21 @@ async def build_features(coin_id: str, days: int = 365) -> dict:
     volume_data = market_chart.get("total_volumes", [])
     volumes = np.array([v[1] for v in volume_data]) if volume_data else np.array([])
 
-    global_data = await fetch_global_data()
+    global_data, coin_detail = await asyncio.gather(
+        fetch_global_data(),
+        fetch_coin_detail(coin_id),
+        return_exceptions=True,
+    )
+
     btc_dominance = None
     total_market_cap = None
-    if global_data and "data" in global_data:
+    if isinstance(global_data, dict) and "data" in global_data:
         btc_dominance = global_data["data"].get("market_cap_percentage", {}).get("btc")
         total_market_cap = global_data["data"].get("total_market_cap", {}).get("usd")
 
-    coin_detail = await fetch_coin_detail(coin_id)
     market_cap = None
     rank = None
-    if coin_detail and "market_data" in coin_detail:
+    if isinstance(coin_detail, dict) and "market_data" in coin_detail:
         md = coin_detail["market_data"]
         market_cap = md.get("market_cap", {}).get("usd")
         rank = md.get("market_cap_rank")
@@ -194,14 +252,3 @@ async def build_features(coin_id: str, days: int = 365) -> dict:
         "market_cap": market_cap,
         "market_cap_rank": rank,
     }
-
-
-async def get_current_price(coin_id: str) -> float:
-    try:
-        chart = await fetch_coin_market_chart(coin_id, days=1)
-        prices = chart.get("prices", [])
-        if prices:
-            return prices[-1][1]
-    except Exception as e:
-        logger.warning(f"Failed to fetch price for {coin_id}: {e}")
-    return 0.0
