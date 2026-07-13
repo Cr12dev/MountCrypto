@@ -8,7 +8,7 @@ import numpy as np
 
 from models import Article, Source, ScrapeResponse, ErrorResponse
 from predictor.schemas import CoinPrediction, PredictionPoint, FactorWeight, SentimentData, ModelMetrics, SUPPORTED_COINS, COIN_IDS
-from predictor.data import build_features, get_current_price
+from predictor.data import build_features
 from predictor.sentiment import analyze_sentiment
 from predictor.ensemble import predict_price
 from scrapers.bbc import BBCScraper
@@ -170,7 +170,8 @@ async def predict_coin(
     coin_info = SUPPORTED_COINS[coin_id]
 
     try:
-        features = await build_features(coin_id, days=365)
+        hist_days = max(days * 3, 90)
+        features = await build_features(coin_id, days=min(hist_days, 365))
         sentiment = await analyze_sentiment(keywords=coin_info["keywords"])
         current_price = float(features["close_prices"][-1])
 
