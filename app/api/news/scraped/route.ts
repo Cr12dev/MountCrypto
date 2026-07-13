@@ -16,10 +16,11 @@ export async function GET(request: Request) {
   const sources = searchParams.get("sources") ?? undefined;
   const _limit = searchParams.get("limit") ?? "20";
 
-  const apiUrl = process.env.SCRAPING_API_URL;
+  let apiUrl = process.env.SCRAPING_API_URL;
   if (!apiUrl) {
     return NextResponse.json({ error: "SCRAPING_API_URL not configured" }, { status: 500 });
   }
+  if (!/^https?:\/\//i.test(apiUrl)) apiUrl = `https://${apiUrl}`;
 
   try {
     const params = new URLSearchParams({ timeout: "45" });

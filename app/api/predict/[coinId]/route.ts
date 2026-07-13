@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
-const SCRAPING_API = process.env.SCRAPING_API_URL || "http://localhost:8000";
+let SCRAPING_API = process.env.SCRAPING_API_URL || "http://localhost:8000";
+if (!/^https?:\/\//i.test(SCRAPING_API)) SCRAPING_API = `https://${SCRAPING_API}`;
 
 export async function GET(
   _request: Request,
