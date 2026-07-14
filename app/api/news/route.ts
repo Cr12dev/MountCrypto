@@ -5,9 +5,10 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const category = searchParams.get("category") ?? undefined;
   const uuid = searchParams.get("uuid");
+  const symbol = searchParams.get("symbol") ?? undefined;
 
   try {
-    const articles = await fetchNews(category);
+    const articles = await fetchNews(category, symbol);
 
     if (uuid) {
       const article = articles.find((a) => a.uuid === uuid);

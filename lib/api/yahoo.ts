@@ -1,10 +1,52 @@
 import YahooFinance from "yahoo-finance2";
 import type { ChangeMap } from "./timeframes";
 
+const YF_QUEUE_INTERVAL = 250;
+const YF_MAX_RETRIES = 3;
+
 let _yh: InstanceType<typeof YahooFinance> | null = null;
+
+function createYF() {
+  return new YahooFinance({
+    queue: { concurrency: 1, interval: YF_QUEUE_INTERVAL },
+    fetchOptions: {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
+    },
+    validation: { logErrors: false },
+    logger: { info: () => {}, warn: () => {}, debug: () => {}, error: () => {}, dir: () => {} },
+  });
+}
+
 function getYahooFinance() {
-  if (!_yh) _yh = new YahooFinance();
+  if (!_yh) _yh = createYF();
   return _yh;
+}
+
+function isRedirectError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return msg.includes("redirect") || msg.includes("guccounter") || msg.includes("guce.yahoo") || msg.includes("collectConsent");
+}
+
+async function withRetry<T>(fn: (yf: InstanceType<typeof YahooFinance>) => Promise<T>): Promise<T> {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= YF_MAX_RETRIES; attempt++) {
+    try {
+      const yf = getYahooFinance();
+      return await fn(yf);
+    } catch (err) {
+      lastErr = err;
+      if (!isRedirectError(err) || attempt >= YF_MAX_RETRIES) break;
+      const delay = Math.min(1000 * Math.pow(2, attempt), 8000);
+      await new Promise((r) => setTimeout(r, delay));
+      _yh = createYF();
+    }
+  }
+  throw lastErr;
 }
 
 const CACHE_TTL = 60_000;
@@ -73,6 +115,9 @@ type ChartQuote = {
 export const STOCK_SYMBOLS = [
   "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA",
   "META", "TSLA", "JPM", "V", "IBM",
+  "SAN", "GGAL", "MU", "NFLX", "MELI", "AMD", "INTC",
+  "ADBE", "NKE", "ADDYY", "MCD", "WMT", "COIN", "ASML",
+  "PEP", "PYPL", "CVX", "ACN",
 ];
 
 export const INDEX_SYMBOLS = [
@@ -134,11 +179,13 @@ async function fetchChanges(symbol: string): Promise<ChangeMap> {
   const changes: ChangeMap = {};
 
   try {
-    const daily = (await getYahooFinance().chart(symbol, {
-      period1: daysAgo(400),
-      interval: "1d",
-      return: "array",
-    })) as unknown as { quotes: ChartQuote[] };
+    const daily = (await withRetry((yf) =>
+      yf.chart(symbol, {
+        period1: daysAgo(400),
+        interval: "1d",
+        return: "array",
+      })
+    )) as unknown as { quotes: ChartQuote[] };
 
     if (daily.quotes?.length) {
       const prices = daily.quotes
@@ -176,7 +223,7 @@ async function fetchChanges(symbol: string): Promise<ChangeMap> {
 }
 
 export async function fetchIndexQuotes(): Promise<IndexQuote[]> {
-  const result = await getYahooFinance().quote(INDEX_SYMBOLS);
+  const result = await withRetry((yf) => yf.quote(INDEX_SYMBOLS));
   const quotes = Array.isArray(result) ? result : [result];
 
   const mapped = quotes.map((q: Record<string, unknown>) => ({
@@ -202,7 +249,7 @@ export async function fetchIndexQuotes(): Promise<IndexQuote[]> {
 }
 
 export async function fetchStockQuotes(): Promise<StockQuote[]> {
-  const result = await getYahooFinance().quote(STOCK_SYMBOLS);
+  const result = await withRetry((yf) => yf.quote(STOCK_SYMBOLS));
   const quotes = Array.isArray(result) ? result : [result];
 
   const mapped = quotes.map((q: Record<string, unknown>) => ({
@@ -230,7 +277,7 @@ export async function fetchStockQuotes(): Promise<StockQuote[]> {
 }
 
 export async function fetchForexQuotes(): Promise<ForexQuote[]> {
-  const result = await getYahooFinance().quote(FOREX_SYMBOLS);
+  const result = await withRetry((yf) => yf.quote(FOREX_SYMBOLS));
   const quotes = Array.isArray(result) ? result : [result];
 
   const mapped = quotes.map((q: Record<string, unknown>) => {
@@ -265,7 +312,7 @@ export async function fetchForexQuotes(): Promise<ForexQuote[]> {
 }
 
 export async function fetchCommodityQuotes(): Promise<CommodityQuote[]> {
-  const result = await getYahooFinance().quote(COMMODITY_SYMBOLS);
+  const result = await withRetry((yf) => yf.quote(COMMODITY_SYMBOLS));
   const quotes = Array.isArray(result) ? result : [result];
 
   const mapped = quotes.map((q: Record<string, unknown>) => {
@@ -300,7 +347,7 @@ export async function fetchCommodityQuotes(): Promise<CommodityQuote[]> {
 
 export async function getStockQuote(symbol: string): Promise<StockQuote | null> {
   try {
-    const result = await getYahooFinance().quote([symbol]);
+    const result = await withRetry((yf) => yf.quote([symbol]));
     const q = (Array.isArray(result) ? result : [result])[0] as Record<string, unknown>;
     return {
       symbol: (q.symbol ?? "") as string,
@@ -312,7 +359,8 @@ export async function getStockQuote(symbol: string): Promise<StockQuote | null> 
       volume: (q.regularMarketVolume ?? 0) as number,
       changes: {},
     };
-  } catch {
+  } catch (err) {
+    console.error("getStockQuote failed for", symbol, err);
     return null;
   }
 }
@@ -325,7 +373,7 @@ export async function getForexQuote(pair: string): Promise<ForexQuote | null> {
   if (!yahooSymbol) return null;
 
   try {
-    const result = await getYahooFinance().quote([yahooSymbol]);
+    const result = await withRetry((yf) => yf.quote([yahooSymbol]));
     const q = (Array.isArray(result) ? result : [result])[0] as Record<string, unknown>;
     const price = (q.regularMarketPrice ?? 0) as number;
     const spread = price * 0.00015;
@@ -338,7 +386,8 @@ export async function getForexQuote(pair: string): Promise<ForexQuote | null> {
       changePercent: (q.regularMarketChangePercent ?? 0) as number,
       changes: {},
     };
-  } catch {
+  } catch (err) {
+    console.error("getForexQuote failed for", pair, err);
     return null;
   }
 }
@@ -350,7 +399,7 @@ export async function getCommodityQuote(symbol: string): Promise<CommodityQuote 
   if (!yahooSymbol) return null;
 
   try {
-    const result = await getYahooFinance().quote([yahooSymbol]);
+    const result = await withRetry((yf) => yf.quote([yahooSymbol]));
     const q = (Array.isArray(result) ? result : [result])[0] as Record<string, unknown>;
     const sym = (q.symbol ?? "") as string;
     return {
@@ -362,22 +411,25 @@ export async function getCommodityQuote(symbol: string): Promise<CommodityQuote 
       unit: COMMODITY_UNITS[sym] || "",
       changes: {},
     };
-  } catch {
+  } catch (err) {
+    console.error("getCommodityQuote failed for", symbol, err);
     return null;
   }
 }
 
-export async function fetchOhlc(symbol: string, type: string, days: string): Promise<OhlcBar[]> {
+export async function fetchOhlc(symbol: string, type: string, days: string, interval?: string): Promise<OhlcBar[]> {
   const numDays = parseInt(days) || 1;
   const is24x7 = type === "crypto";
-  const interval = numDays <= 3 && is24x7 ? "1h" : "1d";
-  const periodDays = interval === "1h" ? Math.max(numDays, 5) : Math.max(numDays, 10);
+  const ohlcInterval = interval || (numDays <= 3 && is24x7 ? "1h" : "1d");
+  const periodDays = ohlcInterval === "1h" ? Math.max(numDays, 5) : Math.max(numDays, 10);
 
-  const result = (await getYahooFinance().chart(symbol, {
-    period1: daysAgo(periodDays),
-    interval,
-    return: "array",
-  })) as unknown as { quotes: ChartQuote[] };
+  const result = (await withRetry((yf) =>
+    yf.chart(symbol, {
+      period1: daysAgo(periodDays),
+      interval: ohlcInterval as "1h" | "1d" | "5d" | "1wk" | "1mo" | "3mo",
+      return: "array",
+    })
+  )) as unknown as { quotes: ChartQuote[] };
 
   const bars = (result.quotes ?? [])
     .filter((q): q is ChartQuote & { close: number; open: number } => q.close != null && q.open != null)
@@ -390,8 +442,8 @@ export async function fetchOhlc(symbol: string, type: string, days: string): Pro
       volume: q.volume ?? undefined,
     }));
 
-  if (bars.length > numDays * (interval === "1h" ? 24 : 1)) {
-    return bars.slice(bars.length - numDays * (interval === "1h" ? 24 : 1));
+  if (bars.length > numDays * (ohlcInterval === "1h" ? 24 : 1)) {
+    return bars.slice(bars.length - numDays * (ohlcInterval === "1h" ? 24 : 1));
   }
   return bars;
 }

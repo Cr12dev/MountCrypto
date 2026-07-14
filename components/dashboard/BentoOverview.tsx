@@ -21,6 +21,7 @@ const chartAssets: ChartAsset[] = [
 ];
 
 const timeframeTabs = [
+  { label: "1H", days: "5", interval: "1h" },
   { label: "24H", days: "1" },
   { label: "7D", days: "7" },
   { label: "1M", days: "30" },
@@ -58,7 +59,7 @@ export function BentoOverview({
   const [commodities, setCommodities] = useState<CommodityQuote[]>(initialCommodities);
   const [chartData, setChartData] = useState<OhlcBar[]>([]);
   const [chartAsset, setChartAsset] = useState<ChartAsset>(chartAssets[0]);
-  const [chartDays, setChartDays] = useState("1");
+  const [{ chartDays, chartInterval }, setChartTimeframe] = useState({ chartDays: "1", chartInterval: undefined as string | undefined });
   const [chartLoading, setChartLoading] = useState(true);
   const [loadSlow, setLoadSlow] = useState(false);
 
@@ -96,10 +97,12 @@ export function BentoOverview({
 
   const abortRef = useRef<AbortController | null>(null);
 
-  const fetchOhlc = useCallback(async (asset: ChartAsset, days: string, signal: AbortSignal) => {
+  const fetchOhlc = useCallback(async (asset: ChartAsset, days: string, interval: string | undefined, signal: AbortSignal) => {
     setChartLoading(true);
     try {
-      const res = await fetch(`/api/ohlc?symbol=${asset.symbol}&type=${asset.type}&days=${days}`, { signal });
+      const params = new URLSearchParams({ symbol: asset.symbol, type: asset.type, days });
+      if (interval) params.set("interval", interval);
+      const res = await fetch(`/api/ohlc?${params}`, { signal });
       const data = await res.json();
       if (Array.isArray(data)) setChartData(data);
     } catch (err) {
@@ -115,9 +118,9 @@ export function BentoOverview({
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
-    fetchOhlc(chartAsset, chartDays, controller.signal);
+    fetchOhlc(chartAsset, chartDays, chartInterval, controller.signal);
     return () => { controller.abort(); };
-  }, [chartAsset, chartDays, fetchOhlc]);
+  }, [chartAsset, chartDays, chartInterval, fetchOhlc]);
 
   const topMovers = useMemo(() => [...stocks].sort((a, b) => Math.abs(b.changePercent) - Math.abs(a.changePercent)), [stocks]);
   const breadthGreen = useMemo(() => stocks.filter((s) => s.changePercent >= 0).length, [stocks]);
@@ -157,19 +160,23 @@ export function BentoOverview({
             ))}
           </div>
           <div className="flex items-center gap-1">
-            {timeframeTabs.map((tf) => (
-              <button
-                key={tf.days}
-                onClick={() => setChartDays(tf.days)}
-                className={`rounded px-2.5 py-1 text-xs font-medium transition-colors ${
-                  chartDays === tf.days
-                    ? "bg-accent/20 text-accent"
-                    : "text-text-secondary hover:bg-bg-hover hover:text-text-primary"
-                }`}
-              >
-                {tf.label}
-              </button>
-            ))}
+            {timeframeTabs.map((tf) => {
+              const interval = (tf as any).interval;
+              const isActive = chartDays === tf.days && chartInterval === (interval ?? undefined);
+              return (
+                <button
+                  key={tf.label}
+                  onClick={() => setChartTimeframe({ chartDays: tf.days, chartInterval: interval })}
+                  className={`rounded px-2.5 py-1 text-xs font-medium transition-colors ${
+                    isActive
+                      ? "bg-accent/20 text-accent"
+                      : "text-text-secondary hover:bg-bg-hover hover:text-text-primary"
+                  }`}
+                >
+                  {tf.label}
+                </button>
+              );
+            })}
           </div>
         </div>
         <div className="flex flex-1 items-center justify-center p-2">

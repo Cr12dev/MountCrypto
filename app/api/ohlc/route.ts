@@ -22,6 +22,24 @@ const YAHOO_SYMBOLS: Record<string, string> = {
   JPM: "JPM",
   V: "V",
   IBM: "IBM",
+  SAN: "SAN",
+  GGAL: "GGAL",
+  MU: "MU",
+  NFLX: "NFLX",
+  MELI: "MELI",
+  AMD: "AMD",
+  INTC: "INTC",
+  ADBE: "ADBE",
+  NKE: "NKE",
+  ADDYY: "ADDYY",
+  MCD: "MCD",
+  WMT: "WMT",
+  COIN: "COIN",
+  ASML: "ASML",
+  PEP: "PEP",
+  PYPL: "PYPL",
+  CVX: "CVX",
+  ACN: "ACN",
   "EUR/USD": "EURUSD=X",
   "GBP/USD": "GBPUSD=X",
   "USD/JPY": "USDJPY=X",
@@ -35,6 +53,7 @@ export async function GET(request: Request) {
   const symbol = searchParams.get("symbol")?.toUpperCase() || "BTC";
   const type = searchParams.get("type") || "crypto";
   const days = searchParams.get("days") || "1";
+  const interval = searchParams.get("interval") || undefined;
 
   const forexPairs: Record<string, string> = {
     "EUR/USD": "EURUSD=X",
@@ -55,7 +74,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const bars = await fetchOhlc(yahooSymbol, type, days);
+    const bars = await fetchOhlc(yahooSymbol, type, days, interval);
     return NextResponse.json(bars);
   } catch {
     return NextResponse.json({ error: "Failed to load OHLC data" }, { status: 500 });
