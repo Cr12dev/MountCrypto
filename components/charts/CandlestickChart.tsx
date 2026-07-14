@@ -50,7 +50,7 @@ interface TooltipData {
   isUp: boolean;
 }
 
-type ActiveIndicator = "sma20" | "sma50" | "sma200" | "ema12" | "ema26" | "bollinger" | "rsi" | "macd" | "patterns";
+export type ActiveIndicator = "sma20" | "sma50" | "sma200" | "ema12" | "ema26" | "bollinger" | "rsi" | "macd" | "patterns";
 
 export function CandlestickChart({
   data,
