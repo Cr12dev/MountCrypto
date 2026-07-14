@@ -15,11 +15,14 @@ const NEWS_QUERIES = [
   "economy",
 ];
 
-export async function fetchNews(category?: string): Promise<NewsArticle[]> {
+export async function fetchNews(category?: string, symbol?: string): Promise<NewsArticle[]> {
   const seen = new Set<string>();
   const articles: NewsArticle[] = [];
 
-  const queries = category ? [category] : NEWS_QUERIES;
+  const queries: string[] = [];
+  if (symbol) queries.push(symbol);
+  if (category) queries.push(category);
+  else queries.push(...NEWS_QUERIES);
 
   const results = await Promise.allSettled(
     queries.map((q) =>
@@ -60,9 +63,22 @@ export async function fetchNews(category?: string): Promise<NewsArticle[]> {
     }
   }
 
-  return articles.sort(
+  const sorted = articles.sort(
     (a, b) =>
       new Date(b.providerPublishTime).getTime() -
       new Date(a.providerPublishTime).getTime(),
   );
+
+  if (symbol) {
+    const relevant = sorted.filter((a) =>
+      a.relatedTickers.some((t) => t.toUpperCase() === symbol.toUpperCase()),
+    );
+    if (relevant.length >= 3) return relevant.slice(0, 10);
+    const rest = sorted.filter((a) =>
+      !a.relatedTickers.some((t) => t.toUpperCase() === symbol.toUpperCase()),
+    );
+    return [...relevant, ...rest].slice(0, 10);
+  }
+
+  return sorted;
 }

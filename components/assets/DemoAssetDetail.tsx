@@ -1,5 +1,6 @@
 import { AddToWatchlistButton } from "@/components/watchlist/AddToWatchlistButton";
 import { AssetChartSection } from "@/components/charts/AssetChartSection";
+import { RelatedNews } from "@/components/news/RelatedNews";
 
 function formatPrice(n: number) {
   if (n >= 1000) return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -54,6 +55,9 @@ export function DemoAssetDetail({
       </div>
       <div className="mt-4">
         <AssetChartSection symbol={symbol} assetType={assetType} />
+      </div>
+      <div className="mt-4">
+        <RelatedNews symbol={symbol} />
       </div>
     </>
   );

@@ -5,6 +5,7 @@ import { AssetHeader } from "@/components/assets/AssetHeader";
 import { AssetStats } from "@/components/assets/AssetStats";
 import { AssetChartSection } from "@/components/charts/AssetChartSection";
 import { DemoAssetDetail } from "@/components/assets/DemoAssetDetail";
+import { RelatedNews } from "@/components/news/RelatedNews";
 import Link from "next/link";
 
 export default async function AssetDetailPage({
@@ -85,6 +86,9 @@ export default async function AssetDetailPage({
       <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_240px]">
         <AssetChartSection symbol={coin.symbol.toUpperCase()} assetType="crypto" />
         <AssetStats coin={coin} />
+      </div>
+      <div className="mt-4">
+        <RelatedNews symbol={coin.symbol.toUpperCase()} />
       </div>
       {coin.description.en && (
         <div className="mt-4 rounded-lg border border-border bg-bg-card p-4">
