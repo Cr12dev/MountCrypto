@@ -58,6 +58,7 @@ export type OhlcBar = {
   high: number;
   low: number;
   close: number;
+  volume?: number;
 };
 
 type ChartQuote = {
@@ -370,7 +371,7 @@ export async function fetchOhlc(symbol: string, type: string, days: string): Pro
   const numDays = parseInt(days) || 1;
   const is24x7 = type === "crypto";
   const interval = numDays <= 3 && is24x7 ? "1h" : "1d";
-  const periodDays = interval === "1h" ? numDays : Math.max(numDays, 5);
+  const periodDays = interval === "1h" ? Math.max(numDays, 5) : Math.max(numDays, 10);
 
   const result = (await getYahooFinance().chart(symbol, {
     period1: daysAgo(periodDays),
@@ -378,7 +379,7 @@ export async function fetchOhlc(symbol: string, type: string, days: string): Pro
     return: "array",
   })) as unknown as { quotes: ChartQuote[] };
 
-  return (result.quotes ?? [])
+  const bars = (result.quotes ?? [])
     .filter((q): q is ChartQuote & { close: number; open: number } => q.close != null && q.open != null)
     .map((q) => ({
       time: Math.floor(q.date.getTime() / 1000),
@@ -386,5 +387,11 @@ export async function fetchOhlc(symbol: string, type: string, days: string): Pro
       high: (q.high ?? q.close) as number,
       low: (q.low ?? q.close) as number,
       close: q.close,
+      volume: q.volume ?? undefined,
     }));
+
+  if (bars.length > numDays * (interval === "1h" ? 24 : 1)) {
+    return bars.slice(bars.length - numDays * (interval === "1h" ? 24 : 1));
+  }
+  return bars;
 }
