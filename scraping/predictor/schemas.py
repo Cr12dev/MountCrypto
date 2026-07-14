@@ -24,10 +24,43 @@ class PredictionPoint(BaseModel):
     lower_bound: float
 
 
+class ProbabilisticPoint(BaseModel):
+    date: str
+    p5: float
+    p25: float
+    p50: float
+    p75: float
+    p95: float
+    bull_case: float
+    bear_case: float
+
+
+class ScenarioPoint(BaseModel):
+    date: str
+    bull: float
+    base: float
+    bear: float
+
+
 class FactorWeight(BaseModel):
     name: str
     weight: float
     impact: str
+
+
+class MarketContext(BaseModel):
+    regime: str
+    adx: float
+    trend_strength: str
+    rsi_interpretation: str
+    above_sma50: bool
+    above_sma200: bool
+    price_change_30d: float
+    support_levels: list[float]
+    resistance_levels: list[float]
+    btc_correlation: float | None = None
+    fear_greed_label: str = "neutral"
+    fear_greed_value: float = 50
 
 
 class SentimentData(BaseModel):
@@ -44,6 +77,18 @@ class ModelMetrics(BaseModel):
     weight: float
 
 
+class ProbabilisticMetrics(BaseModel):
+    probability_up: float
+    probability_down: float
+    expected_price: float
+    expected_return_pct: float
+    value_at_risk_95: float
+    value_at_risk_99: float
+    conditional_var_95: float
+    sharpe_ratio: float | None = None
+    n_simulations: int
+
+
 class CoinPrediction(BaseModel):
     coin_id: str
     symbol: str
@@ -51,6 +96,10 @@ class CoinPrediction(BaseModel):
     current_price: float
     current_date: str
     forecast: list[PredictionPoint]
+    probabilistic_forecast: list[ProbabilisticPoint] | None = None
+    scenarios: list[ScenarioPoint] | None = None
+    market_context: MarketContext | None = None
+    probabilistic_metrics: ProbabilisticMetrics | None = None
     factors: list[FactorWeight]
     sentiment: SentimentData
     confidence: str
