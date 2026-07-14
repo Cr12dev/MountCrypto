@@ -84,7 +84,7 @@ export function MarketHeatmap() {
   }
 
   return (
-    <div>
+    <div className="p-6">
       <div className="mb-4 flex items-center gap-3">
         <span className="text-[10px] font-medium uppercase tracking-wider text-text-secondary">Metric</span>
         {(["change24h", "change7d", "volume"] as const).map((m) => (

@@ -152,7 +152,7 @@ export function MarketScreener() {
   ];
 
   return (
-    <div>
+    <div className="p-6">
       <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-border bg-bg-card p-3">
         <div className="flex gap-1">
           {(["all", "stock", "crypto"] as const).map((t) => (
