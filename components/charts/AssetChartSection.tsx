@@ -7,6 +7,7 @@ import { computeIndicators, scanPatterns } from "@/lib/indicators";
 import type { ActiveIndicator } from "./CandlestickChart";
 
 const TIMEFRAMES = [
+  { label: "1H", days: "5", interval: "1h" },
   { label: "1D", days: "1" },
   { label: "7D", days: "7" },
   { label: "1M", days: "30" },
@@ -32,7 +33,7 @@ export function AssetChartSection({
   symbol: string;
   assetType: string;
 }) {
-  const [days, setDays] = useState("7");
+  const [{ days, interval }, setTimeframe] = useState({ days: "7", interval: undefined as string | undefined });
   const [data, setData] = useState<OhlcBar[]>([]);
   const [chartHeight, setChartHeight] = useState(400);
   const [loading, setLoading] = useState(true);
@@ -41,7 +42,9 @@ export function AssetChartSection({
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    fetch(`/api/ohlc?symbol=${encodeURIComponent(symbol)}&type=${assetType}&days=${days}`)
+    const params = new URLSearchParams({ symbol, type: assetType, days });
+    if (interval) params.set("interval", interval);
+    fetch(`/api/ohlc?${params}`)
       .then((r) => r.json())
       .then((json) => {
         if (cancelled) return;
@@ -51,7 +54,7 @@ export function AssetChartSection({
       .catch(() => { if (!cancelled) setData([]); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [symbol, assetType, days]);
+  }, [symbol, assetType, days, interval]);
 
   const indicators = useMemo(() => data.length > 0 ? computeIndicators(data) : undefined, [data]);
   const patterns = useMemo(() => data.length > 0 ? scanPatterns(data) : undefined, [data]);
@@ -69,10 +72,10 @@ export function AssetChartSection({
           <div className="flex gap-0.5">
             {TIMEFRAMES.map((tf) => (
               <button
-                key={tf.days}
-                onClick={() => setDays(tf.days)}
+                key={tf.label}
+                onClick={() => setTimeframe({ days: tf.days, interval: (tf as any).interval })}
                 className={`rounded px-2.5 py-1 text-xs font-medium transition-colors ${
-                  days === tf.days
+                  days === tf.days && interval === ((tf as any).interval ?? undefined)
                     ? "bg-accent/10 text-accent"
                     : "text-text-secondary hover:bg-bg-hover hover:text-text-primary"
                 }`}

@@ -53,6 +53,7 @@ export async function GET(request: Request) {
   const symbol = searchParams.get("symbol")?.toUpperCase() || "BTC";
   const type = searchParams.get("type") || "crypto";
   const days = searchParams.get("days") || "1";
+  const interval = searchParams.get("interval") || undefined;
 
   const forexPairs: Record<string, string> = {
     "EUR/USD": "EURUSD=X",
@@ -73,7 +74,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const bars = await fetchOhlc(yahooSymbol, type, days);
+    const bars = await fetchOhlc(yahooSymbol, type, days, interval);
     return NextResponse.json(bars);
   } catch {
     return NextResponse.json({ error: "Failed to load OHLC data" }, { status: 500 });

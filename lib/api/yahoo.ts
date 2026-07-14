@@ -370,15 +370,15 @@ export async function getCommodityQuote(symbol: string): Promise<CommodityQuote 
   }
 }
 
-export async function fetchOhlc(symbol: string, type: string, days: string): Promise<OhlcBar[]> {
+export async function fetchOhlc(symbol: string, type: string, days: string, interval?: string): Promise<OhlcBar[]> {
   const numDays = parseInt(days) || 1;
   const is24x7 = type === "crypto";
-  const interval = numDays <= 3 && is24x7 ? "1h" : "1d";
-  const periodDays = interval === "1h" ? Math.max(numDays, 5) : Math.max(numDays, 10);
+  const ohlcInterval = interval || (numDays <= 3 && is24x7 ? "1h" : "1d");
+  const periodDays = ohlcInterval === "1h" ? Math.max(numDays, 5) : Math.max(numDays, 10);
 
   const result = (await getYahooFinance().chart(symbol, {
     period1: daysAgo(periodDays),
-    interval,
+    interval: ohlcInterval,
     return: "array",
   })) as unknown as { quotes: ChartQuote[] };
 
@@ -393,8 +393,8 @@ export async function fetchOhlc(symbol: string, type: string, days: string): Pro
       volume: q.volume ?? undefined,
     }));
 
-  if (bars.length > numDays * (interval === "1h" ? 24 : 1)) {
-    return bars.slice(bars.length - numDays * (interval === "1h" ? 24 : 1));
+  if (bars.length > numDays * (ohlcInterval === "1h" ? 24 : 1)) {
+    return bars.slice(bars.length - numDays * (ohlcInterval === "1h" ? 24 : 1));
   }
   return bars;
 }
