@@ -426,7 +426,7 @@ export async function fetchOhlc(symbol: string, type: string, days: string, inte
   const result = (await withRetry((yf) =>
     yf.chart(symbol, {
       period1: daysAgo(periodDays),
-      interval: ohlcInterval,
+      interval: ohlcInterval as "1h" | "1d" | "5d" | "1wk" | "1mo" | "3mo",
       return: "array",
     })
   )) as unknown as { quotes: ChartQuote[] };
