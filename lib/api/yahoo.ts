@@ -58,7 +58,6 @@ export type OhlcBar = {
   high: number;
   low: number;
   close: number;
-  volume?: number;
 };
 
 type ChartQuote = {
@@ -387,6 +386,5 @@ export async function fetchOhlc(symbol: string, type: string, days: string): Pro
       high: (q.high ?? q.close) as number,
       low: (q.low ?? q.close) as number,
       close: q.close,
-      volume: q.volume ?? undefined,
     }));
 }

@@ -11,8 +11,6 @@ const navItems = [
   { href: "/dashboard/forex", label: "Forex", icon: "dollar" },
   { href: "/dashboard/commodities", label: "Commodities", icon: "drop" },
   { href: "/news", label: "News", icon: "news" },
-  { href: "/dashboard/screener", label: "Screener", icon: "search" },
-  { href: "/dashboard/heatmap", label: "Heatmap", icon: "grid" },
   { href: "/dashboard/predict", label: "Predict", icon: "trend" },
   { href: "/watchlist", label: "Watchlist", icon: "star" },
   { href: "/portfolio", label: "Portfolio", icon: "briefcase" },
@@ -69,11 +67,6 @@ const icons: Record<string, React.ReactNode> = {
   bell: (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 01-3.46 0" />
-    </svg>
-  ),
-  search: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
     </svg>
   ),
   gear: (
