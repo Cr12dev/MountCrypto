@@ -73,6 +73,9 @@ type ChartQuote = {
 export const STOCK_SYMBOLS = [
   "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA",
   "META", "TSLA", "JPM", "V", "IBM",
+  "SAN", "GGAL", "MU", "NFLX", "MELI", "AMD", "INTC",
+  "ADBE", "NKE", "ADDYY", "MCD", "WMT", "COIN", "ASML",
+  "PEP", "PYPL", "CVX", "ACN",
 ];
 
 export const INDEX_SYMBOLS = [
