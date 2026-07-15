@@ -35,6 +35,7 @@ export function PredictionDashboard() {
   const [coins, setCoins] = useState<CoinInfo[]>([]);
   const [selected, setSelected] = useState("bitcoin");
   const [days, setDays] = useState("30");
+  const [chartType, setChartType] = useState<"area" | "line" | "scatter">("area");
   const [prediction, setPrediction] = useState<Prediction | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -157,9 +158,24 @@ export function PredictionDashboard() {
                   {prediction.confidence} confidence
                 </span>
               </div>
+              <div className="flex gap-1">
+                {(["area", "line", "scatter"] as const).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setChartType(t)}
+                    className={`rounded px-2 py-1 text-[10px] font-medium uppercase tracking-wider transition-colors ${
+                      chartType === t
+                        ? "bg-accent/20 text-accent"
+                        : "text-text-secondary hover:bg-bg-hover hover:text-text-primary"
+                    }`}
+                  >
+                    {t === "area" ? "Area" : t === "line" ? "Line" : "Scatter"}
+                  </button>
+                ))}
+              </div>
             </div>
             <div className="p-2">
-              <PredictionChart data={prediction.forecast} />
+              <PredictionChart data={prediction.forecast} chartType={chartType} />
             </div>
           </div>
 

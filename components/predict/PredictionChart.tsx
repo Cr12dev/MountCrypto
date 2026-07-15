@@ -4,11 +4,16 @@ import {
   AreaChart,
   Area,
   Line,
+  LineChart,
+  ScatterChart,
+  Scatter,
   XAxis,
   YAxis,
   Tooltip,
   ResponsiveContainer,
   CartesianGrid,
+  Legend,
+  ZAxis,
 } from "recharts";
 
 type ChartPoint = {
@@ -45,7 +50,121 @@ function CustomTooltip({ active, payload, label }: any) {
   );
 }
 
-export function PredictionChart({ data }: { data: ChartPoint[] }) {
+const sharedAxisProps = {
+  stroke: "#5d6573",
+  tick: { fontSize: 11, fontFamily: "JetBrains Mono, monospace" },
+  tickLine: false as const,
+};
+
+export function PredictionChart({
+  data,
+  chartType = "area",
+}: {
+  data: ChartPoint[];
+  chartType?: "area" | "line" | "scatter";
+}) {
+  if (chartType === "scatter") {
+    return (
+      <ResponsiveContainer width="100%" height={400}>
+        <ScatterChart margin={{ top: 10, right: 16, bottom: 4, left: 8 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#1e222d" />
+          <XAxis
+            dataKey="date"
+            tickFormatter={formatDate}
+            {...sharedAxisProps}
+            axisLine={{ stroke: "#1e222d" }}
+            interval="preserveStartEnd"
+          />
+          <YAxis
+            domain={["dataMin - 500", "dataMax + 500"]}
+            tickFormatter={formatPrice}
+            {...sharedAxisProps}
+            axisLine={false}
+            width={64}
+          />
+          <ZAxis range={[50, 50]} />
+          <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: "3 3" }} />
+          <Legend
+            wrapperStyle={{ fontSize: 11, fontFamily: "JetBrains Mono, monospace" }}
+          />
+          <Scatter
+            name="Predicted"
+            dataKey="predicted_price"
+            fill="#2962ff"
+            stroke="#2962ff"
+            strokeWidth={0}
+          />
+          <Scatter
+            name="Upper bound"
+            dataKey="upper_bound"
+            fill="#089981"
+            stroke="none"
+          />
+          <Scatter
+            name="Lower bound"
+            dataKey="lower_bound"
+            fill="#f23645"
+            stroke="none"
+          />
+        </ScatterChart>
+      </ResponsiveContainer>
+    );
+  }
+
+  if (chartType === "line") {
+    return (
+      <ResponsiveContainer width="100%" height={400}>
+        <LineChart data={data} margin={{ top: 10, right: 16, bottom: 4, left: 8 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#1e222d" />
+          <XAxis
+            dataKey="date"
+            tickFormatter={formatDate}
+            {...sharedAxisProps}
+            axisLine={{ stroke: "#1e222d" }}
+            interval="preserveStartEnd"
+          />
+          <YAxis
+            domain={["dataMin - 500", "dataMax + 500"]}
+            tickFormatter={formatPrice}
+            {...sharedAxisProps}
+            axisLine={false}
+            width={64}
+          />
+          <Tooltip content={<CustomTooltip />} cursor={{ stroke: "#5d6573", strokeDasharray: "3 3" }} />
+          <Legend
+            wrapperStyle={{ fontSize: 11, fontFamily: "JetBrains Mono, monospace" }}
+          />
+          <Line
+            type="monotone"
+            dataKey="upper_bound"
+            stroke="#089981"
+            strokeWidth={1}
+            strokeDasharray="4 3"
+            dot={false}
+            opacity={0.5}
+          />
+          <Line
+            type="monotone"
+            dataKey="predicted_price"
+            stroke="#2962ff"
+            strokeWidth={2}
+            dot={false}
+            activeDot={{ r: 4, fill: "#2962ff" }}
+          />
+          <Line
+            type="monotone"
+            dataKey="lower_bound"
+            stroke="#f23645"
+            strokeWidth={1}
+            strokeDasharray="4 3"
+            dot={false}
+            opacity={0.5}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    );
+  }
+
   return (
     <ResponsiveContainer width="100%" height={400}>
       <AreaChart data={data} margin={{ top: 10, right: 16, bottom: 4, left: 8 }}>
@@ -59,34 +178,20 @@ export function PredictionChart({ data }: { data: ChartPoint[] }) {
         <XAxis
           dataKey="date"
           tickFormatter={formatDate}
-          stroke="#5d6573"
-          tick={{ fontSize: 11, fontFamily: "JetBrains Mono, monospace" }}
-          tickLine={false}
+          {...sharedAxisProps}
           axisLine={{ stroke: "#1e222d" }}
           interval="preserveStartEnd"
         />
         <YAxis
           domain={["dataMin - 500", "dataMax + 500"]}
           tickFormatter={formatPrice}
-          stroke="#5d6573"
-          tick={{ fontSize: 11, fontFamily: "JetBrains Mono, monospace" }}
-          tickLine={false}
+          {...sharedAxisProps}
           axisLine={false}
           width={64}
         />
         <Tooltip content={<CustomTooltip />} cursor={{ stroke: "#5d6573", strokeDasharray: "3 3" }} />
-        <Area
-          type="monotone"
-          dataKey="upper_bound"
-          fill="url(#bandGrad)"
-          stroke="none"
-        />
-        <Area
-          type="monotone"
-          dataKey="lower_bound"
-          fill="#131722"
-          stroke="none"
-        />
+        <Area type="monotone" dataKey="upper_bound" fill="url(#bandGrad)" stroke="none" />
+        <Area type="monotone" dataKey="lower_bound" fill="#131722" stroke="none" />
         <Line
           type="monotone"
           dataKey="predicted_price"
