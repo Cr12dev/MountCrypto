@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { createWatchlist, renameWatchlist, deleteWatchlist, addAsset, removeAsset } from "@/lib/actions/watchlist";
 import { generateWatchlistShareToken, revokeWatchlistShareToken } from "@/lib/actions/share";
@@ -313,7 +314,12 @@ export function WatchlistPage({ userId }: { userId: string }) {
                       >
                         <div className="flex items-center gap-2">
                           <span className="font-mono text-xs text-text-secondary">{assetLabels[asset.asset_type]}</span>
-                          <span className="font-mono text-xs font-medium text-text-primary">{asset.symbol}</span>
+                          <Link
+                            href={`/assets/${encodeURIComponent(asset.symbol)}`}
+                            className="font-mono text-xs font-medium text-text-primary transition-colors hover:text-accent"
+                          >
+                            {asset.symbol}
+                          </Link>
                         </div>
                         <div className="flex items-center gap-3">
                           {quote ? (
