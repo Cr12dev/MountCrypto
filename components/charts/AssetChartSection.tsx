@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { CandlestickChart } from "./CandlestickChart";
+import { CompareChart } from "./CompareChart";
 import type { OhlcBar } from "@/lib/api/yahoo";
 import { computeIndicators, scanPatterns } from "@/lib/indicators";
 import type { ActiveIndicator } from "./CandlestickChart";
@@ -38,6 +39,8 @@ export function AssetChartSection({
   const [chartHeight, setChartHeight] = useState(400);
   const [loading, setLoading] = useState(true);
   const [activeIndicators, setActiveIndicators] = useState<ActiveIndicator[]>([]);
+  const [compareSymbols, setCompareSymbols] = useState<string[]>([]);
+  const [compareInput, setCompareInput] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -82,6 +85,45 @@ export function AssetChartSection({
               >
                 {tf.label}
               </button>
+            ))}
+          </div>
+          <div className="ml-2 flex items-center gap-1 border-l border-border pl-2">
+            <input
+              value={compareInput}
+              onChange={(e) => setCompareInput(e.target.value.toUpperCase())}
+              placeholder="Compare symbol"
+              className="w-24 rounded border border-border bg-bg-surface px-2 py-1 font-mono text-[10px] text-text-primary outline-none placeholder:text-text-secondary focus:border-accent"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && compareInput.trim()) {
+                  if (!compareSymbols.includes(compareInput.trim())) {
+                    setCompareSymbols((prev) => [...prev, compareInput.trim()]);
+                  }
+                  setCompareInput("");
+                }
+              }}
+            />
+            <button
+              onClick={() => {
+                if (compareInput.trim() && !compareSymbols.includes(compareInput.trim())) {
+                  setCompareSymbols((prev) => [...prev, compareInput.trim()]);
+                }
+                setCompareInput("");
+              }}
+              className="text-[10px] text-accent hover:text-text-primary disabled:opacity-30"
+              disabled={!compareInput.trim()}
+            >
+              + Add
+            </button>
+            {compareSymbols.map((sym) => (
+              <span key={sym} className="flex items-center gap-1 rounded bg-bg-hover px-1.5 py-0.5">
+                <span className="font-mono text-[10px] text-text-primary">{sym}</span>
+                <button
+                  onClick={() => setCompareSymbols((prev) => prev.filter((s) => s !== sym))}
+                  className="text-[10px] text-text-secondary hover:text-red"
+                >
+                  ×
+                </button>
+              </span>
             ))}
           </div>
         </div>
@@ -142,6 +184,7 @@ export function AssetChartSection({
             <span className="text-xs text-text-secondary">No data available</span>
           </div>
         )}
+        <CompareChart symbols={compareSymbols} assetType={assetType} />
       </div>
     </div>
   );

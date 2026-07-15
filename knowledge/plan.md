@@ -132,9 +132,9 @@ App web para visualizar mercados financieros: bolsa (NASDAQ, IBEX35...), criptom
 - [x] Screener de mercado (filtrar por cambio %, volumen, capitalización, sector)
 - [x] Indicadores técnicos en el gráfico de velas (RSI, MACD, SMA, EMA, Bandas de Bollinger)
 - [x] Scanner de patrones de velas (envolvente, doji, martillo, estrella fugaz)
-- [ ] Alertas avanzadas (activadas por indicadores técnicos, no solo precio)
-- [ ] Comparativa de activos (superponer múltiples símbolos en el mismo gráfico)
-- [ ] Watchlist sincronizada con el gráfico (click en símbolo → abre detalle)
+- [x] Alertas avanzadas (activadas por indicadores técnicos, no solo precio)
+- [x] Comparativa de activos (superponer múltiples símbolos en el mismo gráfico)
+- [x] Watchlist sincronizada con el gráfico (click en símbolo → abre detalle)
 - [x] Heatmap del mercado por sector / capitalización
 
 ### Fase 5 — Social, mobile y expansión
