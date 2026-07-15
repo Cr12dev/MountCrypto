@@ -9,6 +9,44 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      indicator_alerts: {
+        Row: {
+          asset_type: string
+          condition: string
+          created_at: string
+          id: string
+          indicator_type: string
+          symbol: string
+          timeframe: string
+          triggered: boolean
+          user_id: string
+          value: number
+        }
+        Insert: {
+          asset_type: string
+          condition: string
+          created_at?: string
+          id?: string
+          indicator_type: string
+          symbol: string
+          timeframe?: string
+          triggered?: boolean
+          user_id: string
+          value: number
+        }
+        Update: {
+          asset_type?: string
+          condition?: string
+          created_at?: string
+          id?: string
+          indicator_type?: string
+          symbol?: string
+          timeframe?: string
+          triggered?: boolean
+          user_id?: string
+          value?: number
+        }
+      }
       portfolio_holdings: {
         Row: {
           asset_type: string
