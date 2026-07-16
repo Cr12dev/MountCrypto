@@ -168,7 +168,7 @@ export async function resetAccount() {
 
   await supabase.from("sandbox_transactions").delete().eq("user_id", user.id);
   await supabase.from("sandbox_holdings").delete().eq("user_id", user.id);
-  await supabase.from("sandbox_accounts").update({ balance: 100000 }).eq("user_id", user.id);
+  await supabase.from("sandbox_accounts").update({ balance: 0 }).eq("user_id", user.id);
 
   revalidatePath("/dashboard/sandbox");
 }
