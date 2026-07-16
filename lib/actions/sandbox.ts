@@ -145,23 +145,18 @@ export async function deposit(amount: number) {
   if (amount < 10) throw new Error("Minimum deposit is $10");
   if (amount > 10_000_000) throw new Error("Maximum deposit is $10,000,000");
 
-  const { data: account } = await supabase
-    .from("sandbox_accounts")
-    .select("balance")
-    .eq("user_id", user.id)
-    .single();
+  const account = await getOrCreateAccount();
 
-  if (account && account.balance + amount > 10_000_000) {
+  if (account.balance + amount > 10_000_000) {
     throw new Error("Balance cannot exceed $10,000,000");
   }
 
-  const newBalance = (account?.balance ?? 0) + amount;
-  if (newBalance > 10_000_000) throw new Error("Balance cannot exceed $10,000,000");
-
-  await supabase
+  const { error } = await supabase
     .from("sandbox_accounts")
-    .update({ balance: newBalance })
+    .update({ balance: account.balance + amount })
     .eq("user_id", user.id);
+
+  if (error) throw new Error(error.message);
 
   revalidatePath("/dashboard/sandbox");
 }
