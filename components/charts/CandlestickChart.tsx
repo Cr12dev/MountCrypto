@@ -52,18 +52,26 @@ interface TooltipData {
 
 export type ActiveIndicator = "sma20" | "sma50" | "sma200" | "ema12" | "ema26" | "bollinger" | "rsi" | "macd" | "patterns";
 
+export type LimitLine = {
+  price: number;
+  label: string;
+  color: string;
+};
+
 export function CandlestickChart({
   data,
   height = 320,
   indicators,
   patterns,
   activeIndicators = [],
+  limitLines,
 }: {
   data: OhlcBar[];
   height?: number;
   indicators?: IndicatorSet;
   patterns?: PatternSignal[];
   activeIndicators?: ActiveIndicator[];
+  limitLines?: LimitLine[];
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -495,6 +503,37 @@ export function CandlestickChart({
     ctx.fillText("MACD(12,26,9)", LEFT + 4, topOfMacd + 2);
   }
 
+  function drawLimitLines(ctx: CanvasRenderingContext2D, w: number, h: number, minP: number, range: number) {
+    if (!limitLines?.length) return;
+    const chartH = h * priceChartH;
+    const chartW = w - LEFT - RIGHT;
+
+    for (const ll of limitLines) {
+      const y = TOP + chartH - ((ll.price - minP) / range) * chartH;
+      if (y < TOP || y > TOP + chartH) continue;
+
+      ctx.strokeStyle = ll.color;
+      ctx.lineWidth = 1.2;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      ctx.moveTo(LEFT, y);
+      ctx.lineTo(LEFT + chartW, y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      const label = `${ll.label} $${ll.price.toFixed(2)}`;
+      ctx.font = "10px JetBrains Mono, monospace";
+      ctx.textAlign = "right";
+      ctx.textBaseline = "bottom";
+      const tw = ctx.measureText(label).width;
+      const pad = 4;
+      ctx.fillStyle = ll.color;
+      ctx.fillRect(LEFT + chartW - tw - pad * 2, y - 14, tw + pad * 2, 16);
+      ctx.fillStyle = "#fff";
+      ctx.fillText(label, LEFT + chartW - pad, y - 2);
+    }
+  }
+
   const drawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
@@ -560,10 +599,11 @@ export function CandlestickChart({
 
     drawPriceLabels(ctx, w, h, min, max);
     drawTimeLabels(ctx, w, h, slice, candleGap, halfW);
+    drawLimitLines(ctx, w, h, min, range);
 
     if (hasRsi) drawRsiPanel(ctx, w, h, slice, vs, candleGap);
     if (hasMacd) drawMacdPanel(ctx, w, h, slice, vs, candleGap);
-  }, [data, height, indicators, patterns, activeIndicators, hasRsi, hasMacd, shared, priceChartH]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [data, height, indicators, patterns, activeIndicators, hasRsi, hasMacd, shared, priceChartH, limitLines]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const drawOverlay = useCallback(() => {
     const overlay = overlayRef.current;

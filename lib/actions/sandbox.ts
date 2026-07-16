@@ -137,6 +137,30 @@ export async function sell(symbol: string, assetType: string, quantity: number, 
   revalidatePath("/dashboard/sandbox");
 }
 
+export async function deposit(amount: number) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  if (amount < 10) throw new Error("Minimum deposit is $10");
+  if (amount > 10_000_000) throw new Error("Maximum deposit is $10,000,000");
+
+  const account = await getOrCreateAccount();
+
+  if (account.balance + amount > 10_000_000) {
+    throw new Error("Balance cannot exceed $10,000,000");
+  }
+
+  const { error } = await supabase
+    .from("sandbox_accounts")
+    .update({ balance: account.balance + amount })
+    .eq("user_id", user.id);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/dashboard/sandbox");
+}
+
 export async function resetAccount() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -144,7 +168,7 @@ export async function resetAccount() {
 
   await supabase.from("sandbox_transactions").delete().eq("user_id", user.id);
   await supabase.from("sandbox_holdings").delete().eq("user_id", user.id);
-  await supabase.from("sandbox_accounts").update({ balance: 100000 }).eq("user_id", user.id);
+  await supabase.from("sandbox_accounts").update({ balance: 0 }).eq("user_id", user.id);
 
   revalidatePath("/dashboard/sandbox");
 }
