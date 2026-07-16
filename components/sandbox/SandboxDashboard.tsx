@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { buy, sell, resetAccount } from "@/lib/actions/sandbox";
+import { buy, sell, deposit, resetAccount } from "@/lib/actions/sandbox";
 import { CandlestickChart } from "@/components/charts/CandlestickChart";
 import { computeIndicators, scanPatterns } from "@/lib/indicators";
 import type { OhlcBar } from "@/lib/api/yahoo";
@@ -61,6 +61,8 @@ export function SandboxDashboard({ userId }: { userId: string }) {
   const [tradePrice, setTradePrice] = useState("");
   const [trading, setTrading] = useState(false);
   const [error, setError] = useState("");
+  const [showDeposit, setShowDeposit] = useState(false);
+  const [depositAmount, setDepositAmount] = useState("");
   const [resetting, setResetting] = useState(false);
 
   // Chart state
@@ -251,10 +253,50 @@ export function SandboxDashboard({ userId }: { userId: string }) {
       {/* Balance cards */}
       <div className="mb-4 grid grid-cols-4 gap-3">
         <div className="rounded-lg border border-border bg-bg-card p-3">
-          <p className="text-[10px] uppercase tracking-wider text-text-secondary">Cash Balance</p>
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] uppercase tracking-wider text-text-secondary">Cash Balance</p>
+            <button
+              onClick={() => setShowDeposit(!showDeposit)}
+              className="rounded px-1.5 py-0.5 text-[10px] font-medium text-accent transition-colors hover:bg-accent/10"
+            >
+              {showDeposit ? "Cancel" : "+ Deposit"}
+            </button>
+          </div>
           <p className="mt-1 font-mono text-lg font-semibold text-text-primary">
             {account ? fmtCurrency(account.balance) : "$0"}
           </p>
+          {showDeposit && (
+            <div className="mt-2 flex gap-1.5">
+              <input
+                type="number"
+                step="any"
+                min="10"
+                max="10000000"
+                placeholder="Amount (min $10)"
+                value={depositAmount}
+                onChange={(e) => setDepositAmount(e.target.value)}
+                className="flex-1 rounded border border-border bg-bg-surface px-2 py-1 font-mono text-xs text-text-primary outline-none placeholder:text-text-secondary focus:border-accent"
+              />
+              <button
+                onClick={async () => {
+                  const amt = parseFloat(depositAmount);
+                  if (isNaN(amt) || amt < 10 || amt > 10_000_000) return;
+                  try {
+                    await deposit(amt);
+                    setDepositAmount("");
+                    setShowDeposit(false);
+                    await fetchData();
+                  } catch (e) {
+                    setError(e instanceof Error ? e.message : "Deposit failed");
+                  }
+                }}
+                disabled={!depositAmount || parseFloat(depositAmount) < 10 || parseFloat(depositAmount) > 10_000_000}
+                className="rounded bg-accent px-3 py-1 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-30"
+              >
+                Add
+              </button>
+            </div>
+          )}
         </div>
         <div className="rounded-lg border border-border bg-bg-card p-3">
           <p className="text-[10px] uppercase tracking-wider text-text-secondary">Portfolio Value</p>

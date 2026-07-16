@@ -137,6 +137,35 @@ export async function sell(symbol: string, assetType: string, quantity: number, 
   revalidatePath("/dashboard/sandbox");
 }
 
+export async function deposit(amount: number) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  if (amount < 10) throw new Error("Minimum deposit is $10");
+  if (amount > 10_000_000) throw new Error("Maximum deposit is $10,000,000");
+
+  const { data: account } = await supabase
+    .from("sandbox_accounts")
+    .select("balance")
+    .eq("user_id", user.id)
+    .single();
+
+  if (account && account.balance + amount > 10_000_000) {
+    throw new Error("Balance cannot exceed $10,000,000");
+  }
+
+  const newBalance = (account?.balance ?? 0) + amount;
+  if (newBalance > 10_000_000) throw new Error("Balance cannot exceed $10,000,000");
+
+  await supabase
+    .from("sandbox_accounts")
+    .update({ balance: newBalance })
+    .eq("user_id", user.id);
+
+  revalidatePath("/dashboard/sandbox");
+}
+
 export async function resetAccount() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
