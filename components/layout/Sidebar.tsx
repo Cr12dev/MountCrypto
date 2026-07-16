@@ -15,6 +15,7 @@ const navItems = [
   { href: "/dashboard/heatmap", label: "Heatmap", icon: "grid" },
   { href: "/dashboard/predict", label: "Predict", icon: "trend" },
   { href: "/watchlist", label: "Watchlist", icon: "star" },
+  { href: "/dashboard/sandbox", label: "Sandbox", icon: "sandbox" },
   { href: "/portfolio", label: "Portfolio", icon: "briefcase" },
   { href: "/alerts", label: "Alerts", icon: "bell" },
   { href: "/settings", label: "Settings", icon: "gear" },
@@ -59,6 +60,11 @@ const icons: Record<string, React.ReactNode> = {
   star: (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+    </svg>
+  ),
+  sandbox: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="6" width="20" height="12" rx="2" /><path d="M12 2v4" /><path d="M8 10h8" /><path d="M8 14h5" />
     </svg>
   ),
   briefcase: (

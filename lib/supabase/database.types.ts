@@ -232,6 +232,90 @@ export type Database = {
           user_id?: string
         }
       }
+      sandbox_accounts: {
+        Row: {
+          balance: number
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+      }
+      sandbox_holdings: {
+        Row: {
+          asset_type: string
+          avg_price: number
+          created_at: string
+          id: string
+          quantity: number
+          symbol: string
+          user_id: string
+        }
+        Insert: {
+          asset_type: string
+          avg_price: number
+          created_at?: string
+          id?: string
+          quantity: number
+          symbol: string
+          user_id: string
+        }
+        Update: {
+          asset_type?: string
+          avg_price?: number
+          created_at?: string
+          id?: string
+          quantity?: number
+          symbol?: string
+          user_id?: string
+        }
+      }
+      sandbox_transactions: {
+        Row: {
+          asset_type: string
+          executed_at: string
+          id: string
+          price: number
+          quantity: number
+          symbol: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          asset_type: string
+          executed_at?: string
+          id?: string
+          price: number
+          quantity: number
+          symbol: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          asset_type?: string
+          executed_at?: string
+          id?: string
+          price?: number
+          quantity?: number
+          symbol?: string
+          type?: string
+          user_id?: string
+        }
+      }
     }
   }
 }
